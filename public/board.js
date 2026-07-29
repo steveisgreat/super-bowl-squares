@@ -187,5 +187,5 @@
     }
   }
 
-  SBS.board = { renderPickBoard, renderFullBoard };
+  SBS.board = { renderPickBoard, renderFullBoard, renderLiveScoreBar };
 })();

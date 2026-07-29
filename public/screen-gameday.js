@@ -437,11 +437,10 @@
         const game = await SBS.api.getGame(year);
         applyTeamColors(game);
         const computed = computeGame(game);
-        header.innerHTML = `
-          <div class="tv-meta">
-            <span>Total Pot: ${money(computed.pot)}</span>
-          </div>
-        `;
+        header.innerHTML = '<div class="tv-meta"></div>';
+        const liveBar = SBS.board.renderLiveScoreBar(game);
+        if (liveBar) header.querySelector('.tv-meta').appendChild(liveBar);
+        fitTeamBadges(header);
         renderTvQuarters(game, computed);
         fitTeamBadges(tvQuarters);
         SBS.board.renderFullBoard(boardWrap, game, computed);
