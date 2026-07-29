@@ -3,7 +3,11 @@
 // Colors/abbreviations are factual data widely published in team brand guides.
 // Logos are fetched at runtime from ESPN's public logo CDN by abbreviation —
 // no logo images are bundled with this app.
-(function (global) {
+(function (root, factory) {
+  const api = factory();
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  else root.TeamData = api;
+})(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
   // `font` is a free Google Font chosen to echo each team's real wordmark
@@ -77,5 +81,5 @@
     return `https://a.espncdn.com/i/teamlogos/nfl/500/${team.abbr}.png`;
   }
 
-  global.TeamData = { NFL_TEAMS, findTeamMeta, logoUrl };
-})(window);
+  return { NFL_TEAMS, findTeamMeta, logoUrl };
+});

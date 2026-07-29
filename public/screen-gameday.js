@@ -100,12 +100,12 @@
         scoreRow.innerHTML = `
           <div class="score-team badge-fit">
             ${teamBadge(game.teamA, 'A', { logoSize: 16, cls: 'team-badge-sm' })}
-            <input type="number" min="0" max="9" id="score-${q}-a" value="${res.a === null ? '' : res.a}">
+            <input type="number" min="0" id="score-${q}-a" value="${res.a === null ? '' : res.a}">
           </div>
           <span class="vs">–</span>
           <div class="score-team badge-fit">
             ${teamBadge(game.teamB, 'B', { logoSize: 16, cls: 'team-badge-sm' })}
-            <input type="number" min="0" max="9" id="score-${q}-b" value="${res.b === null ? '' : res.b}">
+            <input type="number" min="0" id="score-${q}-b" value="${res.b === null ? '' : res.b}">
           </div>
         `;
         qcard.appendChild(scoreRow);
@@ -120,8 +120,7 @@
         const inputB = scoreRow.querySelector(`#score-${q}-b`);
         inputA.addEventListener('input', (e) => onScoreChange(q, 'a', e.target.value));
         inputB.addEventListener('input', (e) => onScoreChange(q, 'b', e.target.value));
-        // Scores are clamped to a single digit on entry; show what was actually
-        // stored once the host moves on.
+        // Re-render with the normalized value once the host moves on.
         inputA.addEventListener('blur', () => refreshQuarterCards(computeGame(game)));
         inputB.addEventListener('blur', () => refreshQuarterCards(computeGame(game)));
 
@@ -164,7 +163,7 @@
           outcome.textContent = 'That square is empty! A winner must be randomly drawn.';
         } else {
           outcome.classList.add('pending');
-          outcome.textContent = 'Enter last digit of each team\'s score.';
+          outcome.textContent = 'Enter each team\'s score (the last digit of each determines the winning square).';
         }
 
         refs.actionsEl.innerHTML = '';
@@ -176,7 +175,7 @@
             if (winnerIdx === -1) { showAlert('No squares are filled in — cannot draw a winner.'); return; }
             const row = Math.floor(winnerIdx / 10), col = winnerIdx % 10;
             if (!game.results.final) game.results.final = {};
-            game.results.final.autoResolve = { key: `${res.a}-${res.b}`, row, col };
+            game.results.final.autoResolve = { key: `${res.row}-${res.col}`, row, col };
             await persist();
           });
           refs.actionsEl.appendChild(drawBtn);
@@ -189,15 +188,10 @@
 
     function onScoreChange(q, side, val) {
       if (!game.results[q]) game.results[q] = {};
-      const num = val === '' ? '' : Math.max(0, Math.min(9, parseInt(val, 10) || 0));
+      // Full score is stored and displayed as entered; only its last digit
+      // is used to place the square (see computeGame / lastDigit).
+      const num = val === '' ? '' : Math.max(0, parseInt(val, 10) || 0);
       game.results[q][side] = num;
-      if (q === 'final') {
-        // clear stale auto-resolve if digits changed
-        const entry = game.results.final;
-        if (entry.autoResolve && entry.autoResolve.key !== `${entry.a}-${entry.b}`) {
-          delete entry.autoResolve;
-        }
-      }
       persist(true);
     }
 
@@ -224,6 +218,7 @@
         Object.assign(game, saved);
         const newComputed = computeGame(game);
         SBS.board.renderFullBoard(boardHolder, game, newComputed);
+        fitTeamBadges(boardHolder);
         refreshQuarterCards(newComputed);
       } catch (e) {
         if (await SBS.handleConflict(e, game.year)) return;
@@ -231,6 +226,31 @@
         showAlert('Could not save the score: ' + e.message);
       }
     }
+
+    // Picks up the server's ESPN live-score poll (see server-livescore.js)
+    // and any quarter scores it auto-fills, without disturbing a score box
+    // the host is actively typing into. Skipped while a manual edit is
+    // in flight so the two never race each other.
+    let syncing = false;
+    async function pollLive() {
+      if (saveTimer || syncing) return;
+      syncing = true;
+      try {
+        const fresh = await SBS.api.getGame(game.year);
+        if (fresh.updatedAt !== game.updatedAt) {
+          Object.assign(game, fresh);
+          const newComputed = computeGame(game);
+          SBS.board.renderFullBoard(boardHolder, game, newComputed);
+          fitTeamBadges(boardHolder);
+          refreshQuarterCards(newComputed);
+        }
+      } catch (e) {
+        // Best-effort — the host's own edits still save independently.
+      } finally {
+        syncing = false;
+      }
+    }
+    SBS.setManagedInterval(pollLive, 8000);
   }
 
   // The phone can't be handed a link by the PC, so show the address to type in.
@@ -417,17 +437,15 @@
         const game = await SBS.api.getGame(year);
         applyTeamColors(game);
         const computed = computeGame(game);
-        const filled = game.squares.filter(s => s).length;
         header.innerHTML = `
           <div class="tv-meta">
-            <span>${game.year}</span>
-            <span>Pot: ${money(computed.pot)}</span>
-            <span>${filled}/100 Sold</span>
+            <span>Total Pot: ${money(computed.pot)}</span>
           </div>
         `;
         renderTvQuarters(game, computed);
         fitTeamBadges(tvQuarters);
         SBS.board.renderFullBoard(boardWrap, game, computed);
+        fitTeamBadges(boardWrap);
       } catch (e) {
         header.innerHTML = `<div class="error-msg">Could not load ${year}: ${escapeHtml(e.message)}</div>`;
       }

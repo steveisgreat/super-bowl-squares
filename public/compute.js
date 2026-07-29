@@ -64,6 +64,12 @@
   function findCol(game, digit) { return game.axisX ? game.axisX.indexOf(digit) : -1; }
   function findRow(game, digit) { return game.axisY ? game.axisY.indexOf(digit) : -1; }
 
+  // Scores are entered as the actual (possibly multi-digit) score, but a
+  // square's coordinates are only ever the ones digit of each team's score.
+  function lastDigit(n) {
+    return ((n % 10) + 10) % 10;
+  }
+
   // Returns computed results per quarter + cell winner map { "row-col": [labels] }.
   //
   // Carry ("push") rules: an unclaimed square in Q1-Q3 rolls its payout into the
@@ -102,16 +108,16 @@
       const res = { amount, baseAmount, carryIn: carry, a: hasA ? Number(entry.a) : null, b: hasB ? Number(entry.b) : null, resolved: false, pushed: false, needsDraw: false, winnerName: null, row: null, col: null, autoResolved: false };
 
       if (hasA && hasB && game.axisX && game.axisY) {
-        const row = findRow(game, res.a);
-        const col = findCol(game, res.b);
+        const row = findRow(game, lastDigit(res.a));
+        const col = findCol(game, lastDigit(res.b));
         let winRow = row, winCol = col;
         let autoResolved = false;
 
         let cell = (row >= 0 && col >= 0) ? game.squares[row * 10 + col] : null;
 
         if (!cell && q === 'final') {
-          // Use stored resolution if it matches current a/b; else needs manual re-draw via button.
-          const key = `${res.a}-${res.b}`;
+          // Use stored resolution if it matches the current digit pair; else needs manual re-draw via button.
+          const key = `${row}-${col}`;
           const stored = entry.autoResolve;
           if (stored && stored.key === key && typeof stored.row === 'number') {
             winRow = stored.row;
@@ -135,6 +141,8 @@
           carry = 0;
         } else if (q === 'final') {
           res.needsDraw = (row >= 0 && col >= 0);
+          res.row = row;
+          res.col = col;
           carry = 0; // paid out to the drawn winner; nothing left to roll
         } else {
           res.resolved = true;
@@ -235,12 +243,88 @@
     return (now === undefined ? Date.now() : now) >= t;
   }
 
-  // Mutates `game` into a started game with freshly drawn axis numbers.
+  // Mutates `game` into a started game with freshly drawn axis numbers. When
+  // the host has turned on Simulation Mode, this is also the moment the fake
+  // "live game" begins — its whole trajectory is randomly generated right
+  // here and replayed against the wall clock afterward (see simLiveState),
+  // rather than re-rolled on every poll, so the score only ever moves forward.
   function lockGame(game) {
     game.axisX = shuffledDigits();
     game.axisY = shuffledDigits();
     game.status = 'started';
+    if (game.simulation) {
+      game.simPlan = buildSimPlan();
+      game.liveScore = null;
+    }
     return game;
+  }
+
+  // ---------- Simulation mode ----------
+  // Emulates the shape of the ESPN live-feed polling (see server-livescore.js)
+  // without any network access, for testing/demoing without a real game to
+  // point at. Quarters are compressed to 2 real minutes each so a full "game"
+  // plays out in 8 minutes.
+  const SIM_QUARTER_MS = 2 * 60 * 1000;
+  const SIM_QUARTERS = 4;
+  const SIM_POINT_VALUES = [3, 6, 7, 7, 7, 8]; // FG, TD-no-XP, TD+XP (weighted), TD+2pt
+
+  // Random scoring plays for each team, timestamped (ms offset from kickoff)
+  // across the whole simulated game. Sorted so downstream cumulative sums can
+  // just filter by offset.
+  function buildSimPlan() {
+    const totalMs = SIM_QUARTER_MS * SIM_QUARTERS;
+    const events = [];
+    ['a', 'b'].forEach(team => {
+      const playCount = 3 + Math.floor(Math.random() * 5); // 3-7 scoring plays
+      for (let i = 0; i < playCount; i++) {
+        events.push({
+          team,
+          atMs: Math.floor(Math.random() * totalMs),
+          points: SIM_POINT_VALUES[Math.floor(Math.random() * SIM_POINT_VALUES.length)]
+        });
+      }
+    });
+    events.sort((x, y) => x.atMs - y.atMs);
+    return { startedAt: new Date().toISOString(), quarterMs: SIM_QUARTER_MS, events };
+  }
+
+  function simEventsThrough(plan, team, ms) {
+    return plan.events
+      .filter(e => e.team === team && e.atMs <= ms)
+      .reduce((sum, e) => sum + e.points, 0);
+  }
+
+  // Cumulative score for `team` at the end of `quarterNum` (1-4) — used to
+  // backfill results.q1/q2/q3/final once that quarter is over.
+  function simCumulativeThroughQuarter(plan, team, quarterNum) {
+    const quarterMs = plan.quarterMs || SIM_QUARTER_MS;
+    return simEventsThrough(plan, team, quarterNum * quarterMs);
+  }
+
+  function formatClock(ms) {
+    const s = Math.max(0, Math.ceil(ms / 1000));
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  }
+
+  // The simulated equivalent of an ESPN scoreboard "status" + current score,
+  // computed purely from elapsed wall-clock time since kickoff so it needs no
+  // stored counters and never goes backward.
+  function simLiveState(plan, now) {
+    const quarterMs = plan.quarterMs || SIM_QUARTER_MS;
+    const totalMs = quarterMs * SIM_QUARTERS;
+    const elapsed = Math.max(0, (now === undefined ? Date.now() : now) - new Date(plan.startedAt).getTime());
+    const completed = elapsed >= totalMs;
+    const cappedElapsed = Math.min(elapsed, totalMs);
+    const q0 = completed ? SIM_QUARTERS - 1 : Math.min(SIM_QUARTERS - 1, Math.floor(elapsed / quarterMs));
+    const msIntoQuarter = completed ? quarterMs : elapsed - q0 * quarterMs;
+    return {
+      a: simEventsThrough(plan, 'a', cappedElapsed),
+      b: simEventsThrough(plan, 'b', cappedElapsed),
+      period: q0 + 1,
+      clock: formatClock(quarterMs - msIntoQuarter),
+      state: completed ? 'post' : 'in',
+      completed
+    };
   }
 
   // Once a game is locked (started/finished), its status tracks whether the
@@ -259,6 +343,7 @@
     shuffle, shuffledDigits, emptyGrid,
     potOf, actualPotOf, findCol, findRow, computeGame,
     validateGame, isDigitPermutation, syncStatus,
-    cutoffPassed, lockGame
+    cutoffPassed, lockGame,
+    SIM_QUARTER_MS, buildSimPlan, simLiveState, simCumulativeThroughQuarter
   };
 });

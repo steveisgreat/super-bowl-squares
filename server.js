@@ -6,6 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const GameLogic = require('./public/compute.js');
+const { startLiveScorePolling } = require('./server-livescore.js');
 
 const PORT = process.env.PORT || 3000;
 const DATA_DIR = path.join(__dirname, 'data');
@@ -19,6 +20,8 @@ const PUBLIC_DIR = path.join(__dirname, 'public');
 let httpsReady = false;
 
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+
+startLiveScorePolling(DATA_DIR);
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',

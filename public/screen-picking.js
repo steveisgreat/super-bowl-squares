@@ -5,7 +5,7 @@
   const SBS = window.SBS = window.SBS || {};
   const { el, escapeHtml, money, topbar, showConfirm, showAlert, applyTeamColors, teamBadge, fitTeamBadges } = SBS.ui;
   const { unpaidTotal, openManagePlayersModal, resolveNameForPick, markPlayerPaid } = SBS.players;
-  const { shuffle, shuffledDigits } = window.GameLogic;
+  const { shuffle, lockGame } = window.GameLogic;
 
   // Guards the one irreversible action in the app (drawing the axis numbers).
   // Module-level so a re-render can't reset it mid-save.
@@ -61,7 +61,7 @@
     const formWrap = el('div');
     formWrap.innerHTML = `
       <label>Player Name</label>
-      <input type="text" id="p-name" placeholder="Enter name">
+      <input type="text" id="p-name" placeholder="Enter name" maxlength="10">
       <label># of Squares</label>
       <input type="number" id="p-count" value="1" min="1" max="100">
       <label class="checkbox-label"><input type="checkbox" id="p-paid" checked> <span>Mark as Paid</span></label>
@@ -223,9 +223,7 @@
       // saves that each generate their own axis numbers.
       if (lockInFlight) return;
       lockInFlight = true;
-      game.axisX = shuffledDigits();
-      game.axisY = shuffledDigits();
-      game.status = 'started';
+      lockGame(game);
       try {
         const saved = await SBS.api.saveGame(game);
         SBS.go({ screen: 'board', game: saved });

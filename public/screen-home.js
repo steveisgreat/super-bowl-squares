@@ -147,6 +147,13 @@
         <input type="datetime-local" id="f-cutoff">
         <p style="color:var(--muted); font-size:0.9rem;">At this time, the app will automatically lock square picking and generate the grid numbers.</p>
       </div>
+
+      <label>Simulation Mode?</label>
+      <div class="toggle-group" id="simulation-toggle">
+        <div class="pill" data-val="yes">Yes</div>
+        <div class="pill active" data-val="no">No</div>
+      </div>
+      <p style="color:var(--muted); font-size:0.9rem;">For testing or demos — instead of pulling a real ESPN score, the app invents a random game and plays it out on its own (2-minute quarters) starting the moment you generate the grid numbers.</p>
     `;
 
     function updateTeamPreview(inputId, previewId) {
@@ -166,6 +173,15 @@
 
     let pickMode = 'both';
     let cutoffEnabled = false;
+    let simulationEnabled = false;
+
+    form.querySelectorAll('#simulation-toggle .pill').forEach(p => {
+      p.addEventListener('click', () => {
+        form.querySelectorAll('#simulation-toggle .pill').forEach(x => x.classList.remove('active'));
+        p.classList.add('active');
+        simulationEnabled = p.dataset.val === 'yes';
+      });
+    });
 
     form.querySelectorAll('#pick-mode-group .pill').forEach(p => {
       p.addEventListener('click', () => {
@@ -230,6 +246,7 @@
         pickMode,
         autoCutoffEnabled: cutoffEnabled,
         autoCutoffTime: cutoffEnabled ? form.querySelector('#f-cutoff').value : null,
+        simulation: simulationEnabled,
         status: 'picking',
         squares: emptyGrid(),
         axisX: null,

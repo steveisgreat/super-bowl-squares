@@ -5,7 +5,43 @@
   'use strict';
 
   const SBS = window.SBS = window.SBS || {};
-  const { el, escapeHtml, teamLogoTag, teamColor, readableTextColor } = SBS.ui;
+  const { el, escapeHtml, teamLogoTag, teamColor, readableTextColor, teamBadge } = SBS.ui;
+
+  // "Qn" for regulation, "OT" (or "2OT", etc.) once the game runs past four
+  // quarters — ESPN numbers overtime periods 5, 6, ...
+  function periodLabel(period) {
+    if (!period) return '';
+    if (period <= 4) return `Q${period}`;
+    const otNum = period - 4;
+    return otNum > 1 ? `${otNum}OT` : 'OT';
+  }
+
+  // Small "LIVE" banner above the grid, fed by the server's ESPN score poll
+  // (see server-livescore.js). Only shown once we actually have a score to
+  // report, and hidden again once the final score has been entered — at that
+  // point the grid's own FINAL badge tells the story.
+  function renderLiveScoreBar(game) {
+    const live = game.liveScore;
+    if (!live || live.a === null || live.a === undefined || live.b === null || live.b === undefined) return null;
+    if (live.state === 'pre') return null;
+    if (game.status === 'finished') return null;
+
+    const bar = el('div', 'live-score-bar badge-fit' + (live.simulation ? ' simulation' : ''));
+    const clockTxt = live.completed ? 'FINAL' : [periodLabel(live.period), live.clock].filter(Boolean).join(' · ');
+    bar.innerHTML = `
+      <span class="live-flag">
+        <span class="live-dot" aria-hidden="true"></span>
+        <span class="live-label">${live.simulation ? 'SIMULATION' : 'LIVE'}</span>
+      </span>
+      <span class="live-center">
+        ${teamBadge(game.teamA, 'A', { logoSize: 16, cls: 'team-badge-sm' })}
+        <span class="live-score-digits">${live.a}–${live.b}</span>
+        ${teamBadge(game.teamB, 'B', { logoSize: 16, cls: 'team-badge-sm' })}
+        <span class="live-period">${escapeHtml(clockTxt)}</span>
+      </span>
+    `;
+    return bar;
+  }
 
   // Shown instead of the word "FINAL" inside a winning cell's ribbon, so the
   // overall winner reads at a glance instead of blending in with quarterly
@@ -34,32 +70,11 @@
     return (name) => !(players[name] && players[name].paid);
   }
 
-  const SPARKLE_COLORS = ['#ffd700', '#fff8dc', '#ffffff'];
-  const SPARKLE_CHARS = ['✦', '✧', '✶'];
-
-  // Scattered at random positions/sizes/timing each render so a winning
-  // square's sparkle never looks mechanical or repetitive.
-  function sparkles(count) {
-    let out = '';
-    for (let i = 0; i < count; i++) {
-      const left = Math.round(Math.random() * 100);
-      const top = Math.round(Math.random() * 100);
-      const size = (0.35 + Math.random() * 0.45).toFixed(2);
-      const delay = (Math.random() * 2).toFixed(2);
-      const duration = (1.1 + Math.random() * 1.2).toFixed(2);
-      const color = SPARKLE_COLORS[i % SPARKLE_COLORS.length];
-      const char = SPARKLE_CHARS[i % SPARKLE_CHARS.length];
-      out += `<span class="sparkle" style="left:${left}%; top:${top}%; font-size:${size}em; color:${color}; animation-delay:${delay}s; animation-duration:${duration}s;">${char}</span>`;
-    }
-    return out;
-  }
-
-  function nameTxt(game, name, isWinner) {
+  function nameTxt(game, name) {
     const players = game.players || {};
     const color = players[name] && players[name].color;
     const style = color ? ` style="color:${color};"` : '';
-    const sparkleHtml = isWinner ? sparkles(6) : '';
-    return `${sparkleHtml}<div class="name-txt"${style}>${escapeHtml(name)}</div>`;
+    return `<div class="name-txt"${style}>${escapeHtml(name)}</div>`;
   }
 
   // Step 2 preview. `state` is { selecting, selected, target, onToggle }.
@@ -106,6 +121,9 @@
     holder.innerHTML = '';
     const isUnpaid = unpaidChecker(game);
 
+    const liveBar = renderLiveScoreBar(game);
+    if (liveBar) holder.appendChild(liveBar);
+
     // A 2x2 grid: teamB's bar sits over the numbered columns (top-right),
     // teamA's bar sits beside the numbered rows (bottom-left) starting flush
     // with the top of the grid's own blank corner cell — not stretched up
@@ -143,14 +161,8 @@
         const owing = sq && isUnpaid(sq.name);
         if (owing) cls += ' is-unpaid';
 
-        const inner = sq ? nameTxt(game, sq.name, hasWin) : (hasPush ? '<div class="name-txt">PUSH</div>' : '');
-        // A winning square gets a diagonal ribbon across the corner instead
-        // of the small badge pills — it deliberately covers where those
-        // badges would sit, so the ribbon's own text carries which
-        // quarter(s) were won.
-        const badges = !labels.length ? '' : hasWin
-          ? `<div class="ribbon">${labels.map(l => l.label === 'FINAL' ? TROPHY_SVG : l.label).join(' ')}</div>`
-          : `<div class="badges">${labels.map(l => `<span class="badge">${l.label}</span>`).join('')}</div>`;
+        const inner = sq ? nameTxt(game, sq.name) : (hasPush ? '<div class="name-txt">PUSH</div>' : '');
+        const badges = !labels.length ? '' : `<div class="badges">${labels.map(l => `<span class="badge">${l.label === 'FINAL' ? TROPHY_SVG : l.label}</span>`).join('')}</div>`;
 
         table.appendChild(el('div', cls, badges + inner));
       }

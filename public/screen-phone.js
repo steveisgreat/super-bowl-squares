@@ -6,6 +6,7 @@
 
   const SBS = window.SBS = window.SBS || {};
   const { el, escapeHtml, money, showAlert, applyTeamColors, teamBadge, fitTeamBadges } = SBS.ui;
+  const { openManagePlayersModal } = SBS.players;
   const { QUARTERS, QLABEL, computeGame } = window.GameLogic;
 
   function renderPhone(year) {
@@ -52,6 +53,17 @@
         <div class="phone-sub">${game.year} &middot; Pot ${money(computed.pot)}</div>
       `;
       fitTeamBadges(header);
+
+      const actions = el('div', 'phone-actions');
+      const manageBtn = el('button', 'phone-action-btn', 'Manage Players');
+      manageBtn.type = 'button';
+      manageBtn.addEventListener('click', () => openManagePlayersModal(game, draw));
+      const gridBtn = el('button', 'phone-action-btn', 'Back to Grid');
+      gridBtn.type = 'button';
+      gridBtn.addEventListener('click', () => SBS.go({ screen: 'board', game }));
+      actions.appendChild(manageBtn);
+      actions.appendChild(gridBtn);
+      header.appendChild(actions);
 
       // --- quarter tabs ---
       tabs.innerHTML = '';
@@ -101,7 +113,7 @@
           if (!filledIdx.length) { showAlert('No squares are filled in — cannot draw a winner.'); return; }
           const idx = filledIdx[Math.floor(Math.random() * filledIdx.length)];
           if (!game.results.final) game.results.final = {};
-          game.results.final.autoResolve = { key: `${res.a}-${res.b}`, row: Math.floor(idx / 10), col: idx % 10 };
+          game.results.final.autoResolve = { key: `${res.row}-${res.col}`, row: Math.floor(idx / 10), col: idx % 10 };
           await save();
         });
         panel.appendChild(drawBtn);
@@ -119,26 +131,50 @@
     function keypadFor(side, teamName, current, cls) {
       const box = el('div', 'phone-keypad ' + cls);
       const head = el('div', 'pk-head badge-fit');
-      head.innerHTML = `${teamBadge(teamName, side === 'a' ? 'A' : 'B', { logoSize: 18, cls: 'team-badge-sm' })}<span class="pk-current">${current === null ? '–' : current}</span>`;
+      head.innerHTML = `${teamBadge(teamName, side === 'a' ? 'A' : 'B', { logoSize: 18, cls: 'team-badge-sm' })}<span class="pk-current">${current === null || current === '' ? '–' : current}</span>`;
       box.appendChild(head);
 
+      // Full numeric keyboard (phone dialer layout) so multi-digit scores can
+      // be typed in, not just a single last-digit tap.
       const pad = el('div', 'pk-grid');
-      for (let d = 0; d <= 9; d++) {
-        const key = el('button', 'pk-key' + (current === d ? ' selected' : ''), String(d));
-        key.addEventListener('click', () => setDigit(side, d));
+      for (let d = 1; d <= 9; d++) {
+        const key = el('button', 'pk-key', String(d));
+        key.addEventListener('click', () => appendDigit(side, d));
         pad.appendChild(key);
       }
-      // Spelled out rather than a ⌫ glyph — that renders as a hollow box in
-      // some browsers, and this key erases a score.
       const clearKey = el('button', 'pk-key pk-clear', 'Clear');
-      clearKey.addEventListener('click', () => setDigit(side, ''));
+      clearKey.addEventListener('click', () => setScore(side, ''));
       pad.appendChild(clearKey);
+
+      const zeroKey = el('button', 'pk-key', '0');
+      zeroKey.addEventListener('click', () => appendDigit(side, 0));
+      pad.appendChild(zeroKey);
+
+      // Spelled out rather than a ⌫ glyph — that renders as a hollow box in
+      // some browsers, and this key erases a character.
+      const deleteKey = el('button', 'pk-key pk-clear', 'Delete');
+      deleteKey.addEventListener('click', () => deleteDigit(side));
+      pad.appendChild(deleteKey);
 
       box.appendChild(pad);
       return box;
     }
 
-    async function setDigit(side, value) {
+    function appendDigit(side, digit) {
+      const entry = (game.results[activeQ] || {})[side];
+      const cur = entry === null || entry === undefined ? '' : String(entry);
+      if (cur.length >= 3) return; // scores don't realistically run past 3 digits
+      setScore(side, Number(cur + String(digit)));
+    }
+
+    function deleteDigit(side) {
+      const entry = (game.results[activeQ] || {})[side];
+      const cur = entry === null || entry === undefined ? '' : String(entry);
+      const next = cur.slice(0, -1);
+      setScore(side, next === '' ? '' : Number(next));
+    }
+
+    async function setScore(side, value) {
       if (saving) return;
       if (!game.results[activeQ]) game.results[activeQ] = {};
       game.results[activeQ][side] = value;
