@@ -34,6 +34,34 @@
     return (name) => !(players[name] && players[name].paid);
   }
 
+  const SPARKLE_COLORS = ['#ffd700', '#fff8dc', '#ffffff'];
+  const SPARKLE_CHARS = ['✦', '✧', '✶'];
+
+  // Scattered at random positions/sizes/timing each render so a winning
+  // square's sparkle never looks mechanical or repetitive.
+  function sparkles(count) {
+    let out = '';
+    for (let i = 0; i < count; i++) {
+      const left = Math.round(Math.random() * 100);
+      const top = Math.round(Math.random() * 100);
+      const size = (0.35 + Math.random() * 0.45).toFixed(2);
+      const delay = (Math.random() * 2).toFixed(2);
+      const duration = (1.1 + Math.random() * 1.2).toFixed(2);
+      const color = SPARKLE_COLORS[i % SPARKLE_COLORS.length];
+      const char = SPARKLE_CHARS[i % SPARKLE_CHARS.length];
+      out += `<span class="sparkle" style="left:${left}%; top:${top}%; font-size:${size}em; color:${color}; animation-delay:${delay}s; animation-duration:${duration}s;">${char}</span>`;
+    }
+    return out;
+  }
+
+  function nameTxt(game, name, isWinner) {
+    const players = game.players || {};
+    const color = players[name] && players[name].color;
+    const style = color ? ` style="color:${color};"` : '';
+    const sparkleHtml = isWinner ? sparkles(6) : '';
+    return `${sparkleHtml}<div class="name-txt"${style}>${escapeHtml(name)}</div>`;
+  }
+
   // Step 2 preview. `state` is { selecting, selected, target, onToggle }.
   function renderPickBoard(holder, game, state) {
     holder.innerHTML = '';
@@ -53,7 +81,7 @@
         let label = '';
         if (sq) {
           cls += ' filled';
-          label = `<div class="name-txt">${escapeHtml(sq.name)}</div>`;
+          label = nameTxt(game, sq.name);
           if (isUnpaid(sq.name)) {
             cls += ' is-unpaid';
           }
@@ -115,7 +143,7 @@
         const owing = sq && isUnpaid(sq.name);
         if (owing) cls += ' is-unpaid';
 
-        const inner = sq ? `<div class="name-txt">${escapeHtml(sq.name)}</div>` : (hasPush ? '<div class="name-txt">PUSH</div>' : '');
+        const inner = sq ? nameTxt(game, sq.name, hasWin) : (hasPush ? '<div class="name-txt">PUSH</div>' : '');
         // A winning square gets a diagonal ribbon across the corner instead
         // of the small badge pills — it deliberately covers where those
         // badges would sit, so the ribbon's own text carries which

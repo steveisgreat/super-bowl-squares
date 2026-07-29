@@ -74,12 +74,27 @@
     });
   }
 
+  const HEADER_ICON = `<svg class="header-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <rect x="2" y="2" width="9" height="9" rx="2.5" fill="currentColor"/>
+    <rect x="13" y="2" width="9" height="9" rx="2.5" fill="currentColor" opacity="0.75"/>
+    <rect x="2" y="13" width="9" height="9" rx="2.5" fill="currentColor" opacity="0.75"/>
+    <rect x="13" y="13" width="9" height="9" rx="2.5" fill="currentColor" opacity="0.5"/>
+  </svg>`;
+
+  const HOME_ICON = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <path d="M4 11.5 12 4l8 7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M6 10v9a1 1 0 0 0 1 1h3.5v-5.5a1.5 1.5 0 0 1 1.5-1.5v0a1.5 1.5 0 0 1 1.5 1.5V20H17a1 1 0 0 0 1-1v-9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`;
+
   function topbar(title, extraButtons, opts) {
     const bar = el('div', 'topbar');
-    bar.appendChild(el('h1', '', title));
+    bar.appendChild(el('h1', 'badge-fit', HEADER_ICON + title));
     const nav = el('div', 'nav');
     if (!opts || opts.hideHome !== true) {
-      const homeBtn = el('button', 'secondary', 'Home');
+      const homeBtn = el('button', 'icon-btn home-btn', HOME_ICON);
+      homeBtn.type = 'button';
+      homeBtn.setAttribute('aria-label', 'Home');
+      homeBtn.title = 'Home';
       homeBtn.addEventListener('click', () => SBS.go({ screen: 'home' }));
       nav.appendChild(homeBtn);
     }
@@ -170,14 +185,53 @@
     return meta ? meta.primary : (side === 'B' ? DEFAULT_COLORS.teamB : DEFAULT_COLORS.teamA);
   }
 
+  // A short fallback for team names that don't match a known NFL team (so
+  // free-text entries still get something reasonable in the abbreviated view).
+  function teamAbbr(name, meta) {
+    if (meta) return meta.abbr.toUpperCase();
+    const words = String(name || '').trim().split(/\s+/).filter(Boolean);
+    if (words.length > 1) return words.map(w => w[0]).join('').slice(0, 3).toUpperCase();
+    return String(name || '').slice(0, 3).toUpperCase();
+  }
+
+  // Renders full name and abbreviation together; fitTeamBadges() below picks
+  // which one is visible (and whether the logo shows) based on available space.
   function teamBadge(name, side, opts) {
     opts = opts || {};
     const bg = teamColor(name, side);
     const fg = readableTextColor(bg);
     const logo = teamLogoTag(name, opts.logoSize || 20);
     const cls = 'team-badge' + (opts.cls ? ' ' + opts.cls : '');
-    return `<span class="${cls}" style="background:${bg}; color:${fg};">${logo}<span class="team-badge-name">${escapeHtml(name)}</span></span>`;
+    const meta = teamMeta(name);
+    const fontStyle = meta && meta.font ? ` font-family:${meta.font}, var(--sans);` : '';
+    const abbr = teamAbbr(name, meta);
+    return `<span class="${cls}" style="background:${bg}; color:${fg};">${logo}<span class="team-badge-name" style="${fontStyle}"><span class="badge-full">${escapeHtml(name)}</span><span class="badge-abbr">${escapeHtml(abbr)}</span></span></span>`;
   }
+
+  // Downgrades team-badge display within each `.badge-fit` container, in
+  // order, until its content stops overflowing: full name -> abbreviation ->
+  // abbreviation with no logo. All badges sharing a container downgrade
+  // together so e.g. a matchup header reads consistently on both sides.
+  function fitTeamBadges(root) {
+    const wraps = (root || document).querySelectorAll('.badge-fit');
+    wraps.forEach(wrap => {
+      const badges = wrap.querySelectorAll('.team-badge');
+      if (!badges.length) return;
+      badges.forEach(b => b.classList.remove('mode-abbr', 'mode-nologo'));
+      if (wrap.scrollWidth > wrap.clientWidth + 1) {
+        badges.forEach(b => b.classList.add('mode-abbr'));
+      }
+      if (wrap.scrollWidth > wrap.clientWidth + 1) {
+        badges.forEach(b => b.classList.add('mode-nologo'));
+      }
+    });
+  }
+
+  let fitResizeTimer = null;
+  window.addEventListener('resize', () => {
+    clearTimeout(fitResizeTimer);
+    fitResizeTimer = setTimeout(() => fitTeamBadges(document), 120);
+  });
 
   // ---------- Fullscreen ----------
   // iPadOS Safari only exposes the webkit-prefixed calls, and iPhone Safari has
@@ -259,6 +313,6 @@
     showModal, showConfirm, showAlert, showChoice,
     topbar, statusLabel, currentDefaultYear,
     teamMeta, applyTeamColors, resetTeamColors, teamLogoTag,
-    teamColor, readableTextColor, teamBadge
+    teamColor, readableTextColor, teamBadge, fitTeamBadges, teamAbbr
   };
 })();

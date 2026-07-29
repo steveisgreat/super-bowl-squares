@@ -5,7 +5,7 @@
   'use strict';
 
   const SBS = window.SBS = window.SBS || {};
-  const { el, escapeHtml, money, showAlert, applyTeamColors, teamBadge } = SBS.ui;
+  const { el, escapeHtml, money, showAlert, applyTeamColors, teamBadge, fitTeamBadges } = SBS.ui;
   const { QUARTERS, QLABEL, computeGame } = window.GameLogic;
 
   function renderPhone(year) {
@@ -44,13 +44,14 @@
       applyTeamColors(game);
 
       header.innerHTML = `
-        <div class="phone-matchup">
+        <div class="phone-matchup badge-fit">
           ${teamBadge(game.teamA, 'A', { logoSize: 22 })}
           <span class="pm-vs">vs</span>
           ${teamBadge(game.teamB, 'B', { logoSize: 22 })}
         </div>
         <div class="phone-sub">${game.year} &middot; Pot ${money(computed.pot)}</div>
       `;
+      fitTeamBadges(header);
 
       // --- quarter tabs ---
       tabs.innerHTML = '';
@@ -73,6 +74,7 @@
 
       panel.appendChild(keypadFor('a', game.teamA, res.a, 'pk-a'));
       panel.appendChild(keypadFor('b', game.teamB, res.b, 'pk-b'));
+      fitTeamBadges(panel);
 
       const outcome = el('div', 'phone-outcome');
       if (res.a === null || res.b === null) {
@@ -116,7 +118,7 @@
 
     function keypadFor(side, teamName, current, cls) {
       const box = el('div', 'phone-keypad ' + cls);
-      const head = el('div', 'pk-head');
+      const head = el('div', 'pk-head badge-fit');
       head.innerHTML = `${teamBadge(teamName, side === 'a' ? 'A' : 'B', { logoSize: 18, cls: 'team-badge-sm' })}<span class="pk-current">${current === null ? '–' : current}</span>`;
       box.appendChild(head);
 

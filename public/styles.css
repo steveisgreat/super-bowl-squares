@@ -34,12 +34,10 @@
   --chrome-fg: #b3c1cd;
   --chrome-dim: #8b9aa8;
   --on-chrome: #f4f7fa;
-  /* Inter everywhere, including headings — --serif is kept only so existing
-     rules don't need renaming; it now points at the same sans stack.
-     'Inter var' as the first name lets the variable-font file (loaded in
-     index.html) win over any statically-installed Inter; the rest is the
-     offline fallback if that request never lands. */
-  --sans: 'Inter var', 'Inter', -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  /* Exo 2 everywhere except the topbar title, which uses Orbitron directly.
+     --serif is kept only so existing rules don't need renaming; it now
+     points at the same sans stack. */
+  --sans: 'Exo 2', -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --serif: var(--sans);
   --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   font-size: 16px;
@@ -87,15 +85,17 @@ html, body {
 
 .topbar h1 {
   margin: 0;
-  font-family: var(--serif);
-  font-size: 1.5rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-family: 'Orbitron', var(--serif);
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
   color: var(--on-chrome);
   display: flex;
   align-items: center;
   gap: 10px;
 }
+
+.header-icon { color: var(--accent); flex-shrink: 0; }
 
 .vs-sep { color: var(--muted); font-weight: 600; text-transform: lowercase; }
 .header-year { color: var(--muted); font-weight: 500; }
@@ -199,6 +199,18 @@ button.secondary {
   border: 1px solid var(--border);
 }
 button.secondary:hover { background: var(--panel3); border-color: var(--border-strong); }
+button.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--border);
+}
+button.icon-btn:hover { background: var(--accent-soft); border-color: var(--accent); }
 button.danger { background: var(--danger); border-color: var(--danger); color: var(--on-accent); }
 button.danger:hover { background: #f87171; border-color: #f87171; }
 /* The claim-squares action stays visually distinct from ordinary confirm
@@ -329,27 +341,6 @@ input:focus, select:focus { outline: none; border-color: var(--accent); box-shad
 .stat-box input.val-input:focus { border-bottom-color: var(--accent); box-shadow: none; }
 .pot-edited-tag { text-transform: none; color: var(--accent-hi); font-weight: 600; }
 
-/* Game day board header. The three actions are centred in the card: the empty
-   third column balances the "Grid" heading so the buttons sit dead centre
-   rather than centred in the leftover space. */
-.board-header {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: 10px;
-}
-.board-header-btns {
-  grid-column: 2;
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-@media (max-width: 900px) {
-  .board-header { grid-template-columns: 1fr; }
-  .board-header-btns { grid-column: 1; }
-}
-
 .pick-layout {
   display: grid;
   grid-template-columns: minmax(280px, 380px) minmax(0, 1fr);
@@ -463,6 +454,20 @@ input:focus, select:focus { outline: none; border-color: var(--accent); box-shad
 .team-badge-name { white-space: nowrap; }
 .team-badge-sm { padding: 2px 9px 2px 2px; font-size: 0.78rem; }
 .team-badge-sm .team-logo { padding: 1px; }
+
+/* Space-driven fallback: fitTeamBadges() (ui.js) measures each .badge-fit
+   container and adds mode-abbr / mode-nologo to its badges when the full
+   name (or the abbreviation) doesn't fit. min-width:0 lets a flex-item
+   container (e.g. the topbar h1) actually shrink below its nowrap content's
+   natural width instead of just overflowing unnoticed; overflow:hidden makes
+   that shrinkage — and therefore the mismatch fitTeamBadges checks for —
+   visible to scrollWidth/clientWidth. Both are no-ops on non-flex-item
+   containers that already size correctly. */
+.badge-fit { min-width: 0; overflow: hidden; }
+.team-badge .badge-abbr { display: none; }
+.team-badge.mode-abbr .badge-full { display: none; }
+.team-badge.mode-abbr .badge-abbr { display: inline; }
+.team-badge.mode-nologo .team-logo { display: none; }
 /* 2x2 grid: teamB's bar over the numbered columns (top-right), teamA's bar
    beside the numbered rows (bottom-left) starting flush with the top of the
    grid's own corner cell rather than stretched up alongside teamB's bar. The
@@ -516,6 +521,21 @@ input:focus, select:focus { outline: none; border-color: var(--accent); box-shad
 .cell.selected { background: var(--accent); color: var(--on-accent); }
 .cell.pushed { background: rgba(51, 18, 15, 0.75); color: var(--danger); }
 .cell.winner { color: var(--text); }
+/* Positions/colors/timing are randomized per sparkle in board.js — the
+   keyframe just handles the twinkle (fade + pop + spin), not placement. */
+.sparkle {
+  position: absolute;
+  pointer-events: none;
+  line-height: 1;
+  text-shadow: 0 0 4px rgba(255, 215, 0, 0.8);
+  animation-name: name-sparkle;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+@keyframes name-sparkle {
+  0%, 100% { opacity: 0; transform: scale(0.2) rotate(0deg); }
+  50% { opacity: 1; transform: scale(1) rotate(45deg); }
+}
 .cell .badges {
   position: absolute;
   top: 2px;
@@ -600,6 +620,13 @@ input:focus, select:focus { outline: none; border-color: var(--accent); box-shad
 }
 .qcard .qamt { color: var(--accent); font-weight: 800; }
 .score-inputs { display: flex; gap: 8px; align-items: center; }
+.score-team {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 0;
+}
 .score-inputs input {
   width: 60px;
   text-align: center;
@@ -716,6 +743,56 @@ input:focus, select:focus { outline: none; border-color: var(--accent); box-shad
 .tv-btn:hover { opacity: 1; }
 .tv-screen.chrome-hidden .tv-controls { opacity: 0; pointer-events: none; }
 .tv-screen.chrome-hidden { cursor: none; }
+
+/* Compact, read-only quarterly summary above the board — a single thin row
+   (abbreviations + score + status, no logos, no inputs) so it costs the
+   board almost no vertical space. */
+.tv-quarters {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.tv-qchip {
+  min-width: 0;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 4px 10px 6px;
+}
+.tvq-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 0.7rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.tvq-amt { color: var(--accent); font-weight: 700; }
+.tvq-score {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-weight: 800;
+  font-size: clamp(0.95rem, 1.5vw, 1.35rem);
+  margin: 1px 0;
+}
+.tvq-score .team-badge { font-size: 0.62em; }
+.tvq-digits { white-space: nowrap; }
+.tvq-status {
+  font-size: 0.7rem;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+}
+.tv-qchip.win .tvq-status { color: var(--good); font-weight: 700; }
+.tv-qchip.push .tvq-status { color: var(--warn); font-weight: 700; }
+body.tv-fullscreen .tv-quarters { margin-bottom: 6px; }
 
 /* Real fullscreen: reclaim the padding so the grid runs edge to edge, and give
    the board the room the header was using. */
@@ -967,9 +1044,9 @@ body.phone-mode #app { padding: 0; }
 .pw-row strong { flex: 1; }
 .pw-row .pw-amt { color: var(--accent); font-weight: 800; }
 
-.phone-link-list { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; }
-.phone-link-row { display: flex; align-items: center; gap: 12px; }
-.phone-link-row .phone-link { flex: 1; min-width: 0; }
+.phone-link-list { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 12px 0; }
+.phone-qr-block { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.phone-link-fallback { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%; }
 /* White plate behind the code: scanners need the light quiet zone, which the
    dark theme would otherwise swallow. */
 .phone-qr {
@@ -981,10 +1058,6 @@ body.phone-mode #app { padding: 0; }
   line-height: 0;
 }
 .phone-qr svg { display: block; }
-@media (max-width: 480px) {
-  .phone-link-row { flex-direction: column; align-items: stretch; }
-  .phone-qr { align-self: center; }
-}
 .phone-link {
   background: var(--panel2);
   border: 1px solid var(--border);
@@ -995,4 +1068,6 @@ body.phone-mode #app { padding: 0; }
   color: var(--accent);
   user-select: all;
   word-break: break-all;
+  text-align: center;
+  max-width: 100%;
 }

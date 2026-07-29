@@ -1,4 +1,7 @@
 const http = require('http');
+const https = require('https');
+const net = require('net');
+const selfsigned = require('selfsigned');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -7,6 +10,13 @@ const GameLogic = require('./public/compute.js');
 const PORT = process.env.PORT || 3000;
 const DATA_DIR = path.join(__dirname, 'data');
 const PUBLIC_DIR = path.join(__dirname, 'public');
+
+// Set once the HTTPS server is actually ready to accept TLS connections, so
+// /api/hosts can tell the client whether to build https:// or http:// phone
+// links. Both protocols are served off the SAME port (see startServers,
+// below) so there's only ever one port to open in Windows Firewall and one
+// port the start/stop .bat scripts need to know about.
+let httpsReady = false;
 
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
@@ -123,7 +133,7 @@ async function handleApi(req, res, pathname) {
   // Lets the Game Day screen print the address to type into a phone — the
   // browser can't discover the hosting PC's LAN IP on its own.
   if (pathname === '/api/hosts' && req.method === 'GET') {
-    return sendJSON(res, 200, { port: PORT, addresses: localIPs() });
+    return sendJSON(res, 200, { port: PORT, httpsReady, addresses: localIPs() });
   }
 
   const gameMatch = pathname.match(/^\/api\/game\/(\d{4})$/);
@@ -229,7 +239,7 @@ function serveStatic(req, res, pathname) {
   });
 }
 
-const server = http.createServer((req, res) => {
+function requestListener(req, res) {
   const url = new URL(req.url, `http://${req.headers.host}`);
   const pathname = url.pathname;
 
@@ -240,32 +250,108 @@ const server = http.createServer((req, res) => {
   } else {
     serveStatic(req, res, pathname);
   }
-});
+}
+
+// Windows boxes commonly report several non-internal IPv4 adapters at once
+// (real Wi-Fi/Ethernet plus virtual ones from Hyper-V, VPNs, WSL, Docker,
+// etc). Phones can't reach those virtual addresses, and showing one QR code
+// per address was confusing, so we filter out the obviously-virtual
+// adapters and only surface the real LAN address(es).
+const VIRTUAL_ADAPTER_RE = /virtual|vEthernet|VMware|VirtualBox|Hyper-V|WSL|Docker|Loopback|Tailscale|ZeroTier|Bluetooth|VPN|WireGuard|OpenVPN|Surfshark|NordVPN|NordLynx|ProtonVPN|Mullvad|PIA|TAP-Windows|Cisco AnyConnect/i;
 
 function localIPs() {
   const nets = os.networkInterfaces();
   const results = [];
   for (const name of Object.keys(nets)) {
-    for (const net of nets[name]) {
-      if (net.family === 'IPv4' && !net.internal) results.push(net.address);
+    if (VIRTUAL_ADAPTER_RE.test(name)) continue;
+    for (const iface of nets[name]) {
+      // Link-local (APIPA) addresses are never reachable from another device.
+      if (iface.family === 'IPv4' && !iface.internal && !iface.address.startsWith('169.254.')) results.push(iface.address);
     }
   }
-  return results;
+  return [...new Set(results)];
 }
 
-server.listen(PORT, () => {
+// Phones with "HTTPS-only" browser modes (or a VPN app that force-upgrades
+// insecure connections) refuse to even open a plain-http page — the
+// connection fails outright rather than showing a warning. A self-signed
+// cert can't avoid the "this site isn't trusted" interstitial (there's no
+// real domain to get a publicly-trusted certificate for on a LAN with no
+// internet), but it does let the TLS handshake itself succeed, so the phone
+// gets a one-tap "proceed anyway" instead of a hard connection failure.
+async function startHttpsServer() {
+  const ips = localIPs();
+  const altNames = [
+    { type: 2, value: 'localhost' },
+    { type: 7, ip: '127.0.0.1' },
+    ...ips.map(ip => ({ type: 7, ip }))
+  ];
+  const notBefore = new Date();
+  const notAfter = new Date(notBefore);
+  notAfter.setDate(notAfter.getDate() + 800); // under browsers' ~825-day cap on self-signed certs
+  const pems = await selfsigned.generate([{ name: 'commonName', value: ips[0] || 'localhost' }], {
+    algorithm: 'sha256',
+    notBeforeDate: notBefore,
+    notAfterDate: notAfter,
+    extensions: [
+      { name: 'basicConstraints', cA: false, critical: true },
+      { name: 'keyUsage', digitalSignature: true, keyEncipherment: true, critical: true },
+      { name: 'extKeyUsage', serverAuth: true },
+      { name: 'subjectAltName', altNames }
+    ]
+  });
+  return https.createServer({ key: pems.private, cert: pems.cert }, requestListener);
+}
+
+function logStartup() {
   console.log('');
   console.log('  Super Bowl Grid Game server is running!');
   console.log('');
   console.log(`  On this PC:      http://localhost:${PORT}`);
   const ips = localIPs();
   if (ips.length) {
-    ips.forEach(ip => console.log(`  On your iPad:    http://${ip}:${PORT}`));
+    const scheme = httpsReady ? 'https' : 'http';
+    ips.forEach(ip => console.log(`  On your phone:   ${scheme}://${ip}:${PORT}${httpsReady ? '  (accept the one-time security warning)' : ''}`));
   } else {
     console.log('  Could not detect a local network IP. Run "ipconfig" to find one.');
   }
   console.log('');
-  console.log('  Make sure the iPad is on the same WiFi network as this PC.');
+  console.log('  Make sure the phone is on the same WiFi network as this PC.');
   console.log('  Press Ctrl+C to stop the server.');
   console.log('');
-});
+}
+
+// Serves plain HTTP and HTTPS off the SAME port, so there's only ever one
+// port to allow through Windows Firewall and one port the start/stop .bat
+// scripts need to know about. A raw TCP server peeks at each connection's
+// first byte — a TLS ClientHello always starts with 0x16 — and hands the
+// socket to whichever protocol server actually understands it.
+function startCombinedServer(httpServer, httpsServer) {
+  const dispatcher = net.createServer(socket => {
+    socket.once('error', () => {}); // client vanished before sending anything
+    // A connection that never sends a first byte (dropped mid-handshake,
+    // a stalled network path, etc.) would otherwise sit open forever —
+    // better to close it than leave the phone staring at a blank tab.
+    socket.setTimeout(10000, () => socket.destroy());
+    socket.once('data', firstByte => {
+      socket.setTimeout(0);
+      const target = firstByte[0] === 0x16 ? httpsServer : httpServer;
+      target.emit('connection', socket);
+      socket.unshift(firstByte);
+    });
+  });
+  dispatcher.listen(PORT, logStartup);
+  return dispatcher;
+}
+
+const httpServer = http.createServer(requestListener);
+
+startHttpsServer()
+  .then(httpsServer => {
+    httpsReady = true;
+    startCombinedServer(httpServer, httpsServer);
+  })
+  .catch(e => {
+    console.error(`  Could not start HTTPS (${e.message}) — falling back to plain http.`);
+    httpServer.listen(PORT, logStartup);
+  });

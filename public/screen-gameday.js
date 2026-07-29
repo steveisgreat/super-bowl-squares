@@ -4,7 +4,7 @@
   'use strict';
 
   const SBS = window.SBS = window.SBS || {};
-  const { el, escapeHtml, money, topbar, showAlert, applyTeamColors, teamBadge } = SBS.ui;
+  const { el, escapeHtml, money, topbar, showAlert, applyTeamColors, teamBadge, fitTeamBadges, readableTextColor } = SBS.ui;
   const { unpaidTotal, openManagePlayersModal } = SBS.players;
   const { QUARTERS, QLABEL, computeGame } = window.GameLogic;
 
@@ -71,9 +71,6 @@
     // ---- Board ----
     const boardCard = el('div', 'card');
     layout.appendChild(boardCard);
-    const boardHeaderRow = el('div', 'board-header');
-    boardHeaderRow.appendChild(el('h3', '', 'Grid'));
-    boardCard.appendChild(boardHeaderRow);
 
     const boardHolder = el('div');
     boardCard.appendChild(boardHolder);
@@ -101,11 +98,15 @@
         qcard.innerHTML = `<h4><span>${label}</span><span class="qamt"></span></h4>`;
         const scoreRow = el('div', 'score-inputs');
         scoreRow.innerHTML = `
-          ${teamBadge(game.teamA, 'A', { logoSize: 16, cls: 'team-badge-sm' })}
-          <input type="number" min="0" max="9" id="score-${q}-a" value="${res.a === null ? '' : res.a}">
+          <div class="score-team badge-fit">
+            ${teamBadge(game.teamA, 'A', { logoSize: 16, cls: 'team-badge-sm' })}
+            <input type="number" min="0" max="9" id="score-${q}-a" value="${res.a === null ? '' : res.a}">
+          </div>
           <span class="vs">–</span>
-          <input type="number" min="0" max="9" id="score-${q}-b" value="${res.b === null ? '' : res.b}">
-          ${teamBadge(game.teamB, 'B', { logoSize: 16, cls: 'team-badge-sm' })}
+          <div class="score-team badge-fit">
+            ${teamBadge(game.teamB, 'B', { logoSize: 16, cls: 'team-badge-sm' })}
+            <input type="number" min="0" max="9" id="score-${q}-b" value="${res.b === null ? '' : res.b}">
+          </div>
         `;
         qcard.appendChild(scoreRow);
 
@@ -184,6 +185,7 @@
     }
 
     buildQuarterCards(computed);
+    fitTeamBadges(app);
 
     function onScoreChange(q, side, val) {
       if (!game.results[q]) game.results[q] = {};
@@ -239,6 +241,8 @@
     box.style.cssText = 'max-width:520px; width:100%; box-shadow: var(--shadow-pop);';
     box.innerHTML = `<h3 style="margin-top:0">Score entry on your phone</h3>
       <p style="color:var(--muted)">Point your phone's camera at the code, or type the address in (same WiFi as this PC). You can tap in quarter scores there while the grid stays up on the TV.</p>
+      <p style="color:var(--muted)">The first time you open it, your phone will warn that the connection isn't private — that's expected on a home network with no internet. Tap "Advanced" then "proceed" to continue.</p>
+      <p style="color:var(--muted)">Page won't load at all? On iPhone, go to Settings → Wi-Fi → (ⓘ) next to this network and turn off "Limit IP Address Tracking" — with it on, the phone can't reach other devices on the same network.</p>
       <div class="phone-link-list">Loading addresses…</div>`;
     overlay.appendChild(box);
     document.body.appendChild(overlay);
@@ -250,20 +254,30 @@
       if (!hosts.addresses.length) {
         list.innerHTML = `<p class="error-msg">No network address found. Run <code>ipconfig</code> on this PC to find its IP.</p>`;
       } else {
-        list.innerHTML = hosts.addresses
-          .map(ip => {
-            const url = `http://${ip}:${hosts.port}${path}`;
-            let qr;
-            try {
-              qr = window.QRCode.toSvg(url, 132);
-            } catch (err) {
-              // A QR failure must not cost the host the address itself.
-              console.error('QR encode failed', err);
-              qr = '';
-            }
-            return `<div class="phone-link-row">${qr ? `<div class="phone-qr">${qr}</div>` : ''}<div class="phone-link">${escapeHtml(url)}</div></div>`;
-          })
-          .join('');
+        // Show one QR code, for the first (primary) address — a QR per
+        // address was confusing when a PC has more than one adapter. Any
+        // other addresses are still listed as plain text as a fallback.
+        // https + the server's self-signed cert avoids a hard connection
+        // failure on phones with "HTTPS-only" mode or a VPN app that
+        // force-upgrades insecure connections. Both protocols are served off
+        // the same port, so there's nothing extra to open in the firewall.
+        const scheme = hosts.httpsReady ? 'https' : 'http';
+        const urls = hosts.addresses.map(ip => `${scheme}://${ip}:${hosts.port}${path}`);
+        let qr = '';
+        try {
+          qr = window.QRCode.toSvg(urls[0], 132);
+        } catch (err) {
+          // A QR failure must not cost the host the address itself.
+          console.error('QR encode failed', err);
+        }
+        const qrBlock = qr
+          ? `<div class="phone-qr-block"><div class="phone-qr">${qr}</div><div class="phone-link">${escapeHtml(urls[0])}</div></div>`
+          : `<div class="phone-link">${escapeHtml(urls[0])}</div>`;
+        const otherUrls = urls.slice(1);
+        const otherBlock = otherUrls.length
+          ? `<div class="phone-link-fallback">${otherUrls.map(u => `<div class="phone-link">${escapeHtml(u)}</div>`).join('')}</div>`
+          : '';
+        list.innerHTML = qrBlock + otherBlock;
       }
     } catch (e) {
       list.innerHTML = `<p class="error-msg">Could not read the server's address: ${escapeHtml(e.message)}</p>`;
@@ -293,6 +307,9 @@
 
     const header = el('div', 'tv-header');
     screenEl.appendChild(header);
+
+    const tvQuarters = el('div', 'tv-quarters');
+    screenEl.appendChild(tvQuarters);
 
     const boardWrap = el('div', 'tv-board-wrap');
     screenEl.appendChild(boardWrap);
@@ -326,7 +343,12 @@
     exitBtn.addEventListener('click', async () => {
       if (SBS.ui.fullscreen.active()) await SBS.ui.fullscreen.exit();
       window.location.hash = '';
-      SBS.go({ screen: 'home' });
+      try {
+        const game = await SBS.api.getGame(year);
+        SBS.go({ screen: 'board', game });
+      } catch (e) {
+        SBS.go({ screen: 'home' });
+      }
     });
 
     controls.appendChild(fsBtn);
@@ -354,6 +376,41 @@
       document.body.classList.remove('tv-mode', 'tv-fullscreen');
     });
 
+    // Read-only, single-row summary of all four quarters — full team pills
+    // (matching the rest of the app) but no score inputs, so the board
+    // underneath keeps almost all of the screen.
+    function renderTvQuarters(game, computed) {
+      const badgeA = teamBadge(game.teamA, 'A', { logoSize: 18, cls: 'team-badge-sm' });
+      const badgeB = teamBadge(game.teamB, 'B', { logoSize: 18, cls: 'team-badge-sm' });
+      tvQuarters.innerHTML = QUARTERS.map(q => {
+        const res = computed.results[q];
+        const scoreTxt = (res.a === null || res.b === null) ? '– – –' : `${res.a}–${res.b}`;
+        let statusTxt, statusCls;
+        if (res.a === null || res.b === null) {
+          statusTxt = 'Awaiting'; statusCls = 'pending';
+        } else if (res.resolved && res.pushed) {
+          statusTxt = 'PUSH'; statusCls = 'push';
+        } else if (res.resolved && res.winnerName) {
+          statusTxt = res.winnerName; statusCls = 'win';
+        } else if (q === 'final' && res.needsDraw) {
+          statusTxt = 'Needs draw'; statusCls = 'push';
+        } else {
+          statusTxt = '—'; statusCls = 'pending';
+        }
+        return `
+          <div class="tv-qchip ${statusCls}">
+            <div class="tvq-top"><span class="tvq-label">${QLABEL[q]}</span><span class="tvq-amt">${money(res.amount)}</span></div>
+            <div class="tvq-score badge-fit">
+              ${badgeA}
+              <span class="tvq-digits">${scoreTxt}</span>
+              ${badgeB}
+            </div>
+            <div class="tvq-status">${escapeHtml(statusTxt)}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
     async function load() {
       if (SBS.currentScreen() !== 'tv') return;
       try {
@@ -368,6 +425,8 @@
             <span>${filled}/100 Sold</span>
           </div>
         `;
+        renderTvQuarters(game, computed);
+        fitTeamBadges(tvQuarters);
         SBS.board.renderFullBoard(boardWrap, game, computed);
       } catch (e) {
         header.innerHTML = `<div class="error-msg">Could not load ${year}: ${escapeHtml(e.message)}</div>`;

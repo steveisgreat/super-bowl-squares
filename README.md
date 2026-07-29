@@ -81,6 +81,12 @@ The phone view is built for one thumb at a party: pick a quarter from the tabs a
 
 If a quarter's winning square is empty, the **Randomly Draw Winner** button is available here too.
 
+### If a phone can't connect
+
+The server speaks both `http://` and `https://` on the same port. HTTPS uses a self-signed certificate (there's no real domain to get a trusted one for on a local network), so the **first time** a phone opens the address it'll get a "this connection is not private" warning — that's expected, tap **Advanced → proceed** and it'll go straight in after that.
+
+If the page doesn't load at all (blank/spinning tab, or "the server stopped responding") rather than showing that warning, the phone likely can't reach the PC on the network at all. On iPhone, check **Settings → Wi-Fi → (ⓘ) next to the network → turn off "Limit IP Address Tracking"** for that network — with it on, iOS can use a private, rotating IP that breaks local-device connections like this one. If that's not it, also check the router for an "AP Isolation" / "Client Isolation" / "Guest Network" setting that blocks devices on the same WiFi from reaching each other.
+
 ## Data storage
 
 Each year's game is saved as a JSON file in the `data/` folder. Back that folder up if you want to preserve history long-term. Saves are written to a temporary file and then renamed into place, so a crash or power cut mid-save can't leave a half-written game behind.

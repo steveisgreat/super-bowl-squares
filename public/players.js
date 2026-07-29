@@ -18,13 +18,38 @@
     return game.players;
   }
 
+  // Bright, saturated colors chosen to stay readable as text against the
+  // dark grid background (--panel2 #232e38) — no dim or near-black hues,
+  // and nothing too close to the red used for the unpaid-square warning.
+  const PLAYER_COLORS = [
+    '#feca57', '#48dbfb', '#1dd1a1', '#a29bfe', '#ff9ff3', '#54a0ff',
+    '#00d2d3', '#f368e0', '#ff9f43', '#10ac84', '#c56cf0', '#7bed9f',
+    '#70a1ff', '#eccc68', '#ffdd59', '#34e7e4'
+  ];
+
+  // Assigns a color the first time a name appears, and never reassigns it
+  // afterward — each player keeps one color for the life of the game.
+  function ensurePlayerColor(game, name) {
+    const players = ensurePlayers(game);
+    if (!players[name]) players[name] = { paid: false };
+    if (!players[name].color) {
+      const used = new Set(Object.values(players).map(p => p.color).filter(Boolean));
+      let color = PLAYER_COLORS.find(c => !used.has(c));
+      if (!color) color = PLAYER_COLORS[Object.keys(players).length % PLAYER_COLORS.length];
+      players[name].color = color;
+    }
+    return players[name].color;
+  }
+
   // Claiming more squares must never quietly un-pay a player: if Steve already
   // paid and later grabs two more squares with the box unchecked, he stays paid.
   // Only the Manage Payments modal can move someone back to unpaid.
   function markPlayerPaid(game, name, paidChecked) {
     const players = ensurePlayers(game);
     const alreadyPaid = !!(players[name] && players[name].paid);
-    players[name] = { paid: alreadyPaid || !!paidChecked };
+    const existingColor = players[name] && players[name].color;
+    players[name] = { paid: alreadyPaid || !!paidChecked, color: existingColor };
+    ensurePlayerColor(game, name);
   }
 
   function renameSquares(game, oldName, newName) {
@@ -105,7 +130,8 @@
       const count = counts[name];
       const paid = !!(game.players[name] && game.players[name].paid);
       const owed = count * (parseFloat(game.squarePrice) || 0);
-      return { name, count, paid, owed };
+      const color = ensurePlayerColor(game, name);
+      return { name, count, paid, owed, color };
     });
   }
 
@@ -164,7 +190,8 @@
             <button class="ghost small btn-delete">Remove</button>
           `;
           row.querySelector('input[type=checkbox]').addEventListener('change', async (e) => {
-            ensurePlayers(game)[p.name] = { paid: e.target.checked };
+            const players = ensurePlayers(game);
+            players[p.name] = Object.assign({}, players[p.name], { paid: e.target.checked });
             await persistAndRefresh();
           });
           row.querySelector('button.btn-delete').addEventListener('click', async () => {
@@ -181,17 +208,13 @@
       }
 
       box.appendChild(el('div', 'unpaid-summary', `Total Unpaid: <strong>${money(unpaidTotal(game))}</strong>`));
-      const closeBtn = el('button', 'secondary', 'Close');
-      closeBtn.style.marginTop = '14px';
-      closeBtn.addEventListener('click', () => overlay.remove());
-      box.appendChild(closeBtn);
     }
 
     renderList();
   }
 
   SBS.players = {
-    ensurePlayers, markPlayerPaid, renameSquares,
+    ensurePlayers, ensurePlayerColor, markPlayerPaid, renameSquares,
     collectNameGroups, resolveNameForPick,
     playerSummaries, unpaidTotal, openManagePlayersModal,
     toSubscript, fromSubscript, stripSubscript

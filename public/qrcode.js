@@ -240,16 +240,20 @@
     for (let i = 0; i < 10; i++) rem = (rem << 1) ^ ((rem >> 9) * 0x537);
     const bits = ((data << 10) | rem) ^ 0x5412;
 
-    for (let i = 0; i < 15; i++) {
-      const bit = (bits >> i) & 1;
-      // Copy 1, around the top-left finder.
-      if (i < 6) modules[8][i] = bit;
-      else if (i < 8) modules[8][i + 1] = bit;
-      else if (i === 8) modules[7][8] = bit;
-      else modules[14 - i][8] = bit;
-      // Copy 2, split between the other two finders.
-      if (i < 8) modules[size - 1 - i][8] = bit;
-      else modules[8][size - 15 + i] = bit;
+    // Low bits (0-7) run down the top-left finder's column and along the
+    // top-right finder's row; high bits (7-14) run along the top-left
+    // finder's row and down the bottom-left finder's column. Getting the
+    // low/high split backwards here still LOOKS like a QR code but no
+    // scanner can read it, since they all expect this exact placement.
+    let voffset = 0, hoffset = 0;
+    for (let i = 0; i < 8; i++) {
+      const vbit = (bits >> i) & 1;
+      const hbit = (bits >> (14 - i)) & 1;
+      if (i === 6) { voffset = 1; hoffset = 1; } // skip the timing column/row
+      modules[i + voffset][8] = vbit;
+      modules[8][i + hoffset] = hbit;
+      modules[8][size - 1 - i] = vbit;
+      modules[size - 1 - i][8] = hbit;
     }
     modules[size - 8][8] = 1; // dark module
   }

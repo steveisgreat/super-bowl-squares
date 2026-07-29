@@ -3,7 +3,7 @@
   'use strict';
 
   const SBS = window.SBS = window.SBS || {};
-  const { el, escapeHtml, money, topbar, showConfirm, showAlert, applyTeamColors, teamBadge } = SBS.ui;
+  const { el, escapeHtml, money, topbar, showConfirm, showAlert, applyTeamColors, teamBadge, fitTeamBadges } = SBS.ui;
   const { unpaidTotal, openManagePlayersModal, resolveNameForPick, markPlayerPaid } = SBS.players;
   const { shuffle, shuffledDigits } = window.GameLogic;
 
@@ -23,6 +23,7 @@
     manageBtn.addEventListener('click', () => openManagePlayersModal(game, reopen));
     nav.appendChild(manageBtn);
     app.appendChild(bar);
+    fitTeamBadges(bar);
 
     const main = el('div', 'main');
     app.appendChild(main);

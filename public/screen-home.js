@@ -3,7 +3,7 @@
   'use strict';
 
   const SBS = window.SBS = window.SBS || {};
-  const { el, escapeHtml, topbar, statusLabel, showAlert, showConfirm, currentDefaultYear, teamMeta, teamLogoTag, teamBadge, resetTeamColors } = SBS.ui;
+  const { el, escapeHtml, topbar, statusLabel, showAlert, showConfirm, currentDefaultYear, teamMeta, teamLogoTag, teamBadge, resetTeamColors, fitTeamBadges } = SBS.ui;
   const { emptyGrid } = window.GameLogic;
 
   async function openYear(year) {
@@ -47,7 +47,7 @@
         c.innerHTML = `
           <button class="ghost small btn-delete year-card-delete">Delete</button>
           <div class="yr">${y.year}</div>
-          <div class="teams">${teamBadge(y.teamA || '?', 'A', { logoSize: 18, cls: 'team-badge-sm' })}<span class="vs-sep">vs</span>${teamBadge(y.teamB || '?', 'B', { logoSize: 18, cls: 'team-badge-sm' })}</div>
+          <div class="teams badge-fit">${teamBadge(y.teamA || '?', 'A', { logoSize: 18, cls: 'team-badge-sm' })}<span class="vs-sep">vs</span>${teamBadge(y.teamB || '?', 'B', { logoSize: 18, cls: 'team-badge-sm' })}</div>
           <span class="status status-${y.status}">${statusLabel(y.status)}</span>
         `;
         c.addEventListener('click', () => openYear(y.year));
@@ -65,6 +65,7 @@
         grid.appendChild(c);
       });
       card.appendChild(grid);
+      fitTeamBadges(grid);
     }
 
     const actions = el('div', 'actions');
