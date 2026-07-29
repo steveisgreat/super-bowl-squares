@@ -34,6 +34,16 @@ To AirPlay to a TV: open the iPad URL in Safari, then use Control Center → Scr
 
 Past years are saved automatically and can be viewed from the Home screen — they cannot be replayed, but quarterly results can still be corrected if needed.
 
+If a push (nobody in the winning square) rolls money forward, the rollover goes to whichever quarter is scored next — so it is still paid out correctly even if you fill the quarters in out of order.
+
+## Using more than one device at once
+
+The board can be open on several devices at the same time. The Pick Squares screen refreshes itself every few seconds, so squares claimed on the iPad show up on the PC without a reload. If two devices happen to save at the same moment, the second one is told the board changed and reloads the latest version instead of overwriting the other device's picks.
+
+The auto-cutoff is enforced by the server as well as the browser, so picking still locks at the cutoff time even if every device is asleep or closed.
+
+This is what makes the game-day arrangement work: the phone, the iPad and the TV are all looking at the same saved game, and each one refreshes on its own.
+
 ## Team colors & logos
 
 If the team names you enter in Step 1 match an NFL team (e.g. "Chiefs", "Kansas City Chiefs", or "KC"), the app automatically applies that team's real colors and logo throughout the grid, board, and TV view. A live preview appears under each team name field as you type. If a name doesn't match any team, it falls back to generic red/blue styling — nothing breaks.
@@ -48,12 +58,37 @@ Each claim in Step 2 has a **"Mark as Paid"** checkbox. An **Unpaid Total** stat
 
 If you enter a name that already has squares (e.g. "Steve" again), the app asks whether it's the same person (combines their squares/payment status) or a different person — in which case both are kept separate and labeled with a subscript number (`Steve₁`, `Steve₂`) throughout the grid and payment list.
 
-## TV / Grid-Only View
+## Game day setup: grid on the TV, scores on your phone
 
-From the Game Day screen (Step 3), click **"🖥️ Open TV Grid View"** to open a clean, large-format, grid-only view in a new browser tab — no forms or controls, just the matchup header and a big board sized to fill a 1080p screen edge-to-edge. It refreshes itself automatically every few seconds, so you can leave it open on a TV (AirPlayed from a separate tab/device) while entering scores from the iPad on the main Step 3 screen.
+The intended arrangement once the game starts:
 
-You can also jump straight to it with a direct link: `http://<your-pc-ip>:3000/#tv-<year>` (e.g. `#tv-2026`).
+1. **iPad → TV (AirPlay):** open the **TV Grid View** on the iPad and mirror it to the television. The grid fills the screen and refreshes itself — nobody needs to touch it all game.
+2. **Phone:** open the **Phone Score Entry** view. At the end of each quarter, tap the two score digits. The TV updates within a few seconds on its own.
+
+### TV / Grid-Only View
+
+From the Game Day screen (Step 3), click **"🖥️ Open TV Grid View"** — a clean, large-format, grid-only view: no forms or controls, just the matchup header and a big board sized to fill a 1080p screen edge-to-edge. Direct link: `http://<your-pc-ip>:3000/#tv-<year>` (e.g. `#tv-2026`).
+
+- **⛶ Fullscreen** hides the browser's own toolbars. The button appears top-right and **fades out after three seconds of no input**, so the television shows nothing but the grid; move the mouse or tap the screen to bring it back.
+- The view holds a **screen wake lock** while it's open, so the iPad doesn't auto-lock and kill the AirPlay session mid-game.
+- On an iPad, the most reliable way to lose Safari's toolbars entirely is **Share → Add to Home Screen**, then launch it from that icon — it opens with no browser chrome at all.
+
+### Phone Score Entry
+
+From Game Day, click **"📱 Phone Score Entry"** — it shows the address to open on your phone (same WiFi), e.g. `http://<your-pc-ip>:3000/#score-<year>`.
+
+The phone view is built for one thumb at a party: pick a quarter from the tabs across the top, then **tap the last digit** of each team's score on a big keypad — no typing, so the keyboard never covers the screen. Each tap saves immediately and the TV picks it up on its next refresh. It also shows what the quarter pays, who won it, and a running list of winners so far. Quarters already scored are ticked, and it opens on the first quarter still needing a score.
+
+If a quarter's winning square is empty, the **Randomly Draw Winner** button is available here too.
 
 ## Data storage
 
-Each year's game is saved as a JSON file in the `data/` folder. Back that folder up if you want to preserve history long-term.
+Each year's game is saved as a JSON file in the `data/` folder. Back that folder up if you want to preserve history long-term. Saves are written to a temporary file and then renamed into place, so a crash or power cut mid-save can't leave a half-written game behind.
+
+## Development
+
+The payout math, board validation and cutoff rules live in `public/compute.js`, shared by the browser and the server. They have tests (no dependencies, no test runner):
+
+```bash
+npm test
+```

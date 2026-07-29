@@ -2,6 +2,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const GameLogic = require('./public/compute.js');
 
 const PORT = process.env.PORT || 3000;
 const DATA_DIR = path.join(__dirname, 'data');
@@ -50,16 +51,54 @@ function readBody(req) {
   });
 }
 
+// Only ever accepts a real 4-digit year, so a junk value can never produce a
+// stray file such as `.json` in the data folder.
 function yearFile(year) {
-  const y = String(year).replace(/[^0-9]/g, '');
+  const y = String(year).trim();
+  if (!/^\d{4}$/.test(y)) return null;
   return path.join(DATA_DIR, `${y}.json`);
 }
 
+// Atomic save: write a temp file and rename over the target. A crash, power cut
+// or OneDrive sync landing mid-write can then never leave a truncated,
+// unparseable game file behind.
+function writeGameFile(file, game) {
+  const tmp = `${file}.${process.pid}.tmp`;
+  fs.writeFileSync(tmp, JSON.stringify(game, null, 2));
+  fs.renameSync(tmp, file);
+}
+
+function readGameFile(file) {
+  return JSON.parse(fs.readFileSync(file, 'utf8'));
+}
+
+// The browser can only lock picking at the cutoff while someone has the app
+// open. The server owns the clock too, so a cutoff still fires if every device
+// is asleep.
+function applyAutoCutoff(game, file) {
+  let changed = false;
+  if (GameLogic.cutoffPassed(game)) {
+    GameLogic.lockGame(game);
+    changed = true;
+  }
+  // Also re-derives started/finished on read, so games saved before this
+  // distinction existed pick up the right status without needing an edit.
+  const statusBefore = game.status;
+  GameLogic.syncStatus(game);
+  if (game.status !== statusBefore) changed = true;
+  if (changed) {
+    game.updatedAt = new Date().toISOString();
+    writeGameFile(file, game);
+  }
+  return game;
+}
+
 function listYears() {
-  const files = fs.readdirSync(DATA_DIR).filter(f => f.endsWith('.json'));
+  const files = fs.readdirSync(DATA_DIR).filter(f => /^\d{4}\.json$/.test(f));
   const games = files.map(f => {
     try {
-      const g = JSON.parse(fs.readFileSync(path.join(DATA_DIR, f), 'utf8'));
+      const full = path.join(DATA_DIR, f);
+      const g = applyAutoCutoff(readGameFile(full), full);
       return {
         year: g.year,
         teamA: g.teamA,
@@ -68,6 +107,7 @@ function listYears() {
         updatedAt: g.updatedAt || null
       };
     } catch (e) {
+      console.error(`Skipping unreadable game file ${f}: ${e.message}`);
       return null;
     }
   }).filter(Boolean);
@@ -80,11 +120,17 @@ async function handleApi(req, res, pathname) {
     return sendJSON(res, 200, listYears());
   }
 
+  // Lets the Game Day screen print the address to type into a phone — the
+  // browser can't discover the hosting PC's LAN IP on its own.
+  if (pathname === '/api/hosts' && req.method === 'GET') {
+    return sendJSON(res, 200, { port: PORT, addresses: localIPs() });
+  }
+
   const gameMatch = pathname.match(/^\/api\/game\/(\d{4})$/);
   if (gameMatch && req.method === 'GET') {
     const file = yearFile(gameMatch[1]);
     if (!fs.existsSync(file)) return sendJSON(res, 404, { error: 'Not found' });
-    const game = JSON.parse(fs.readFileSync(file, 'utf8'));
+    const game = applyAutoCutoff(readGameFile(file), file);
     return sendJSON(res, 200, game);
   }
 
@@ -102,14 +148,17 @@ async function handleApi(req, res, pathname) {
     } catch (e) {
       return sendJSON(res, 400, { error: 'Invalid JSON' });
     }
-    if (!body.year) return sendJSON(res, 400, { error: 'Year is required' });
     const file = yearFile(body.year);
+    if (!file) return sendJSON(res, 400, { error: 'A valid 4-digit year is required.' });
+    const invalid = GameLogic.validateGame(body);
+    if (invalid) return sendJSON(res, 400, { error: invalid });
     if (fs.existsSync(file)) {
       return sendJSON(res, 409, { error: `A game for ${body.year} already exists.` });
     }
+    body.year = parseInt(body.year, 10);
     body.createdAt = new Date().toISOString();
     body.updatedAt = body.createdAt;
-    fs.writeFileSync(file, JSON.stringify(body, null, 2));
+    writeGameFile(file, body);
     return sendJSON(res, 201, body);
   }
 
@@ -121,15 +170,30 @@ async function handleApi(req, res, pathname) {
       return sendJSON(res, 400, { error: 'Invalid JSON' });
     }
     const file = yearFile(gameMatch[1]);
+    const clientUpdatedAt = body.updatedAt || null;
     body.year = parseInt(gameMatch[1], 10);
-    body.updatedAt = new Date().toISOString();
+    GameLogic.syncStatus(body);
+
+    const invalid = GameLogic.validateGame(body);
+    if (invalid) return sendJSON(res, 400, { error: invalid });
+
     if (fs.existsSync(file)) {
-      const existing = JSON.parse(fs.readFileSync(file, 'utf8'));
-      body.createdAt = existing.createdAt || body.updatedAt;
+      const existing = readGameFile(file);
+      // Optimistic concurrency: every client PUTs the whole game, so without
+      // this check two devices editing at once silently overwrite each other.
+      if (existing.updatedAt && clientUpdatedAt && existing.updatedAt !== clientUpdatedAt) {
+        return sendJSON(res, 409, {
+          error: 'This game was changed on another device.',
+          conflict: true,
+          game: existing
+        });
+      }
+      body.createdAt = existing.createdAt || new Date().toISOString();
     } else {
-      body.createdAt = body.updatedAt;
+      body.createdAt = new Date().toISOString();
     }
-    fs.writeFileSync(file, JSON.stringify(body, null, 2));
+    body.updatedAt = new Date().toISOString();
+    writeGameFile(file, body);
     return sendJSON(res, 200, body);
   }
 
@@ -137,10 +201,19 @@ async function handleApi(req, res, pathname) {
 }
 
 function serveStatic(req, res, pathname) {
-  let filePath = pathname === '/' ? '/index.html' : pathname;
-  filePath = path.join(PUBLIC_DIR, decodeURIComponent(filePath));
+  let requested = pathname === '/' ? '/index.html' : pathname;
+  try {
+    requested = decodeURIComponent(requested);
+  } catch (e) {
+    res.writeHead(400);
+    return res.end('Bad request');
+  }
+  const filePath = path.join(PUBLIC_DIR, requested);
 
-  if (!filePath.startsWith(PUBLIC_DIR)) {
+  // path.relative is the reliable containment check — a startsWith() prefix
+  // test would also accept a sibling folder like `public-backup`.
+  const rel = path.relative(PUBLIC_DIR, filePath);
+  if (rel.startsWith('..') || path.isAbsolute(rel)) {
     res.writeHead(403);
     return res.end('Forbidden');
   }

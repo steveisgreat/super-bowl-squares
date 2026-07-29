@@ -3,12 +3,37 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<!-- Added to the Home Screen, the app launches without Safari's toolbars —
+     the most reliable way to get a chrome-free grid on an AirPlayed iPad. -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Squares">
+<meta name="theme-color" content="#151c24">
 <title>Super Bowl Squares</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>%F0%9F%8F%88</text></svg>">
+<!-- Loaded from Google Fonts; the system-sans stack in styles.css is the
+     fallback on a network with no internet access (e.g. a party wifi). -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 <div id="app"></div>
+<!-- Loaded in dependency order: data/logic, then core, then UI, then screens,
+     then the entry point. No bundler — each file registers itself on window.SBS. -->
+<script src="compute.js"></script>
 <script src="teams.js"></script>
+<script src="qrcode.js"></script>
+<script src="core.js"></script>
+<script src="ui.js"></script>
+<script src="players.js"></script>
+<script src="board.js"></script>
+<script src="screen-home.js"></script>
+<script src="screen-picking.js"></script>
+<script src="screen-gameday.js"></script>
+<script src="screen-phone.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

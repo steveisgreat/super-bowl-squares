@@ -1,24 +1,47 @@
+/* Midnight Blueprint — Blueprint's dark counterpart in the Appraiser Suite's
+   theme system. Surfaces sit ABOVE the page rather than below it (panel/
+   panel2/panel3 step light-to-dark relative to bg), and --accent is a light
+   blue that needs dark text on top of it — see --on-accent below. */
 :root {
-  --bg: #090e1a;
-  --bg-glow: #101c36;
-  --panel: #131c2e;
-  --panel2: #1a2740;
-  --panel3: #202f4d;
-  --border: #2c3c5e;
-  --text: #f3f6ff;
-  --muted: #9fb0d1;
-  --accent: #ffb703;
-  --accent-hi: #ffd166;
-  --accent2: #2ec4b6;
-  --danger: #ef476f;
-  --good: #2ec4b6;
+  --bg: #0b0f13;
+  --panel: #1b242d;
+  --panel2: #232e38;
+  --panel3: #2e3b46;
+  --border: #33414d;
+  --border-strong: #4a5b69;
+  --text: #edf2f6;
+  --muted: #b3c1cd;
+  --accent: #8dbde8;
+  --accent-hi: #abd0f0;
+  --accent-soft: #1b2a38;
+  --on-accent: #0e141a;
+  --accent2: #93c9aa;
+  --danger: #ef4444;
+  --danger-soft: #33120f;
+  --danger-border: #7a2320;
+  --good: #93c9aa;
+  --good-soft: #1e2b23;
+  --warn: #e6b271;
+  --warn-soft: #2b2317;
   --teamA: #ff6b6b;
   --teamA-alt: #ffb3b3;
   --teamB: #4dabf7;
   --teamB-alt: #a5d8ff;
-  --radius: 16px;
-  --shadow-card: 0 4px 18px rgba(0,0,0,0.28), 0 1px 0 rgba(255,255,255,0.03) inset;
-  --shadow-pop: 0 16px 48px rgba(0,0,0,0.5);
+  --radius: 6px;
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 40%), 0 4px 14px rgb(0 0 0 / 30%);
+  --shadow-pop: 0 10px 30px rgb(0 0 0 / 50%);
+  --chrome-bg: #070a0d;
+  --chrome-fg: #b3c1cd;
+  --chrome-dim: #8b9aa8;
+  --on-chrome: #f4f7fa;
+  /* Inter everywhere, including headings — --serif is kept only so existing
+     rules don't need renaming; it now points at the same sans stack.
+     'Inter var' as the first name lets the variable-font file (loaded in
+     index.html) win over any statically-installed Inter; the rest is the
+     offline fallback if that request never lands. */
+  --sans: 'Inter var', 'Inter', -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --serif: var(--sans);
+  --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   font-size: 16px;
 }
 
@@ -27,13 +50,9 @@
 html, body {
   margin: 0;
   padding: 0;
-  background:
-    radial-gradient(1100px 600px at 15% -10%, var(--bg-glow), transparent 60%),
-    radial-gradient(900px 500px at 110% 10%, #241a3a, transparent 55%),
-    var(--bg);
-  background-attachment: fixed;
+  background: var(--bg);
   color: var(--text);
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--sans);
   height: 100%;
   -webkit-tap-highlight-color: transparent;
   overflow-x: hidden;
@@ -59,30 +78,34 @@ html, body {
   align-items: center;
   justify-content: space-between;
   padding: 16px 28px;
-  background: rgba(9, 14, 26, 0.85);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border-bottom: 1px solid var(--border);
-  box-shadow: 0 2px 0 rgba(0,0,0,0.15);
+  background: var(--chrome-bg);
+  color: var(--on-chrome);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
   flex-wrap: wrap;
   gap: 10px;
 }
 
 .topbar h1 {
   margin: 0;
+  font-family: var(--serif);
   font-size: 1.5rem;
-  font-weight: 800;
-  letter-spacing: 0.3px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--on-chrome);
   display: flex;
   align-items: center;
   gap: 10px;
 }
-.topbar h1 .flag { font-size: 1.6rem; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4)); }
+
+.vs-sep { color: var(--muted); font-weight: 600; text-transform: lowercase; }
+.header-year { color: var(--muted); font-weight: 500; }
 
 .topbar .nav {
   display: flex;
   gap: 10px;
   align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .main {
@@ -93,16 +116,16 @@ html, body {
   margin: 0 auto;
 }
 
-h2 { margin-top: 0; font-size: 1.7rem; font-weight: 800; letter-spacing: 0.2px; }
-h3 { font-size: 1.2rem; color: var(--text); font-weight: 700; opacity: 0.9; }
+h2 { margin-top: 0; font-family: var(--serif); font-size: 1.6rem; font-weight: 600; letter-spacing: -0.01em; }
+h3 { font-family: var(--serif); font-size: 1.15rem; color: var(--text); font-weight: 600; letter-spacing: -0.005em; }
 
 .card {
-  background: linear-gradient(180deg, var(--panel), var(--panel) 60%, #101a2c);
+  background: var(--panel);
   border: 1px solid var(--border);
   border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
   padding: 24px;
   margin-bottom: 20px;
-  box-shadow: var(--shadow-card);
 }
 
 .grid-cards {
@@ -112,70 +135,98 @@ h3 { font-size: 1.2rem; color: var(--text); font-weight: 700; opacity: 0.9; }
 }
 
 .year-card {
-  background: linear-gradient(155deg, var(--panel2), var(--panel3));
+  position: relative;
+  background: var(--panel);
   border: 1px solid var(--border);
   border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
   padding: 20px;
   cursor: pointer;
-  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
-  box-shadow: var(--shadow-card);
+  transition: border-color 0.15s ease;
 }
-.year-card:hover { transform: translateY(-3px); border-color: var(--accent); box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
-.year-card .yr { font-size: 1.9rem; font-weight: 800; color: var(--accent); letter-spacing: 0.3px; }
-.year-card .teams { font-size: 1.1rem; margin: 8px 0; font-weight: 600; }
+.year-card:hover { border-color: var(--accent); }
+.year-card .yr { font-family: var(--serif); font-size: 1.8rem; font-weight: 600; color: var(--accent); letter-spacing: -0.01em; }
+.year-card .teams { display: flex; align-items: center; gap: 8px; margin: 8px 0; flex-wrap: wrap; }
 .year-card .status {
   display: inline-block;
   padding: 4px 12px;
   border-radius: 999px;
-  font-size: 0.8rem;
-  font-weight: 800;
+  font-size: 0.78rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.3px;
 }
-.status-setup { background: #4b3b1a; color: #ffcf7a; }
-.status-picking { background: #1a3b4b; color: #7ad4ff; }
-.status-started { background: #1a4b2a; color: #7affa0; }
+/* Shared style for every delete/remove action in the app — outlined red
+   rather than a solid fill, so it reads as destructive without competing
+   with the solid --accent buttons for visual weight. */
+button.ghost.btn-delete {
+  padding: 6px 12px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  border-radius: var(--radius);
+  color: var(--danger);
+  border: 1px solid var(--danger);
+  background: var(--panel);
+}
+button.ghost.btn-delete:hover { border-color: var(--danger); background: var(--danger-soft); }
+.year-card-delete { position: absolute; top: 12px; right: 12px; }
+.status-setup { background: var(--warn-soft); color: var(--warn); }
+.status-picking { background: var(--accent-soft); color: var(--accent-hi); }
+.status-started { background: var(--accent-soft); color: var(--accent-hi); }
+.status-finished { background: var(--good-soft); color: var(--good); }
 
 button, .btn {
   font: inherit;
-  background: linear-gradient(180deg, var(--accent-hi), var(--accent));
-  color: #1a1406;
-  border: none;
-  padding: 13px 22px;
-  border-radius: 11px;
-  font-weight: 800;
+  background: var(--accent);
+  /* --accent is a light pastel blue in Midnight Blueprint, not a saturated
+     one — white text on it is low-contrast, so every solid accent/danger/
+     good fill in this file pairs with --on-accent (near-black) instead. */
+  color: var(--on-accent);
+  border: 1px solid var(--accent);
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  font-weight: 600;
   cursor: pointer;
-  transition: filter 0.12s ease, transform 0.05s ease, box-shadow 0.12s ease;
+  transition: background 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
   touch-action: manipulation;
-  box-shadow: 0 3px 10px rgba(255, 183, 3, 0.25);
-  letter-spacing: 0.2px;
+  letter-spacing: 0.1px;
 }
-button:hover, .btn:hover { filter: brightness(1.06); box-shadow: 0 5px 16px rgba(255, 183, 3, 0.35); }
-button:active, .btn:active { transform: scale(0.97); }
+button:hover, .btn:hover { background: var(--accent-hi); border-color: var(--accent-hi); }
+button:active, .btn:active { filter: brightness(0.97); }
 button.secondary {
-  background: var(--panel3);
-  color: var(--text);
-  border: 1px solid var(--border);
-  box-shadow: none;
-}
-button.secondary:hover { filter: none; background: #26365a; box-shadow: none; }
-button.danger { background: linear-gradient(180deg, #ff6b8a, var(--danger)); color: #fff; box-shadow: 0 3px 10px rgba(239, 71, 111, 0.3); }
-button.ghost { background: transparent; color: var(--text); border: 1px solid var(--border); box-shadow: none; }
-button.small { padding: 8px 14px; font-size: 0.85rem; border-radius: 9px; }
-button:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
-
-label { display: block; margin: 14px 0 6px; font-weight: 700; color: var(--muted); font-size: 0.95rem; }
-input[type=text], input[type=number], input[type=datetime-local], select {
-  width: 100%;
-  padding: 13px 14px;
-  border-radius: 11px;
-  border: 1px solid var(--border);
   background: var(--panel2);
   color: var(--text);
-  font-size: 1.05rem;
+  border: 1px solid var(--border);
+}
+button.secondary:hover { background: var(--panel3); border-color: var(--border-strong); }
+button.danger { background: var(--danger); border-color: var(--danger); color: var(--on-accent); }
+button.danger:hover { background: #f87171; border-color: #f87171; }
+/* The claim-squares action stays visually distinct from ordinary confirm
+   buttons and the red lock/remove actions — an outlined "good" accent rather
+   than a glow, to match the document-like restraint of the rest of the UI. */
+button.pick {
+  background: var(--good-soft);
+  color: var(--good);
+  border: 1px solid var(--good);
+}
+button.pick:hover { background: var(--good); color: var(--on-accent); }
+button.ghost { background: transparent; color: var(--text); border: 1px solid var(--border); }
+button.small { padding: 7px 12px; font-size: 0.85rem; border-radius: var(--radius); }
+button.full-width { width: 100%; text-align: center; }
+button:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
+
+label { display: block; margin: 14px 0 6px; font-weight: 500; color: var(--muted); font-size: 0.85rem; }
+input[type=text], input[type=number], input[type=datetime-local], select {
+  width: 100%;
+  padding: 11px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-strong);
+  background: var(--panel);
+  color: var(--text);
+  font-size: 1rem;
   transition: border-color 0.12s ease, box-shadow 0.12s ease;
 }
-input:focus, select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(255, 183, 3, 0.22); }
+input:focus, select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 
 .checkbox-label {
   display: flex;
@@ -201,39 +252,41 @@ input:focus, select:focus { outline: none; border-color: var(--accent); box-shad
   gap: 10px;
   flex-wrap: wrap;
 }
+.radio-group.centered { justify-content: center; }
 .pill {
-  padding: 11px 20px;
+  padding: 9px 18px;
   border-radius: 999px;
   border: 1px solid var(--border);
-  background: var(--panel2);
+  background: var(--panel);
   cursor: pointer;
-  font-weight: 700;
+  font-weight: 600;
   user-select: none;
   transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
 }
 .pill:hover { border-color: var(--accent); }
 .pill.active {
-  background: linear-gradient(180deg, var(--accent-hi), var(--accent));
-  color: #1a1406;
+  background: var(--accent);
+  color: var(--on-accent);
   border-color: var(--accent);
 }
 
 .pct-row { display: flex; gap: 10px; align-items: center; }
 .pct-total {
-  font-weight: 800;
-  padding: 8px 14px;
-  border-radius: 10px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: var(--radius);
   margin-top: 10px;
   display: inline-block;
 }
-.pct-total.ok { background: #1a4b2a; color: #7affa0; }
-.pct-total.bad { background: #4b1a1a; color: #ff8a8a; }
+.pct-total.ok { background: var(--good-soft); color: var(--good); }
+.pct-total.bad { background: var(--danger-soft); color: var(--danger); }
 
 .error-msg {
-  background: #4b1a1a;
-  color: #ff9d9d;
-  padding: 12px 16px;
-  border-radius: 10px;
+  background: var(--danger-soft);
+  border: 1px solid var(--danger-border);
+  color: var(--danger);
+  padding: 10px 14px;
+  border-radius: var(--radius);
   margin-bottom: 14px;
   font-weight: 600;
 }
@@ -248,38 +301,78 @@ input:focus, select:focus { outline: none; border-color: var(--accent); box-shad
   margin-bottom: 18px;
 }
 .stat-box {
-  background: var(--panel2);
+  background: var(--panel);
   border: 1px solid var(--border);
   border-left: 3px solid var(--accent);
-  border-radius: 12px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
   padding: 16px 18px;
   text-align: center;
-  box-shadow: var(--shadow-card);
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  transition: border-color 0.12s ease;
 }
-.stat-box .val { font-size: 1.8rem; font-weight: 800; color: var(--accent); letter-spacing: 0.2px; }
-.stat-box .lbl { font-size: 0.82rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; font-weight: 700; margin-top: 2px; }
+.stat-box .val { font-variant-numeric: tabular-nums; font-size: 1.7rem; font-weight: 700; color: var(--accent); letter-spacing: -0.01em; }
+.stat-box .lbl { font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; margin-top: 2px; }
 .stat-box.warn { border-left-color: var(--danger); }
 .stat-box.warn .val { color: var(--danger); }
 .stat-box.clickable { cursor: pointer; }
-.stat-box.clickable:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(0,0,0,0.35); }
+.stat-box.clickable:hover { border-color: var(--accent); }
+.stat-box input.val-input {
+  font-family: inherit;
+  background: transparent;
+  border: none;
+  border-bottom: 1px dashed var(--border-strong);
+  border-radius: 0;
+  text-align: center;
+  width: 100%;
+  padding: 0 0 2px;
+}
+.stat-box input.val-input:focus { border-bottom-color: var(--accent); box-shadow: none; }
+.pot-edited-tag { text-transform: none; color: var(--accent-hi); font-weight: 600; }
+
+/* Game day board header. The three actions are centred in the card: the empty
+   third column balances the "Grid" heading so the buttons sit dead centre
+   rather than centred in the leftover space. */
+.board-header {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 10px;
+}
+.board-header-btns {
+  grid-column: 2;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+@media (max-width: 900px) {
+  .board-header { grid-template-columns: 1fr; }
+  .board-header-btns { grid-column: 1; }
+}
 
 .pick-layout {
   display: grid;
-  grid-template-columns: minmax(280px, 380px) 1fr;
+  grid-template-columns: minmax(280px, 380px) minmax(0, 1fr);
   gap: 22px;
   align-items: start;
 }
+/* Game day puts the board first and the score panel second. This must be a
+   class, not an inline style — an inline style outranks the breakpoint below
+   and pushed the score inputs off-screen on an iPad in portrait. */
+.pick-layout.board-first {
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 380px);
+}
 @media (max-width: 900px) {
-  .pick-layout { grid-template-columns: 1fr; }
+  .pick-layout,
+  .pick-layout.board-first { grid-template-columns: minmax(0, 1fr); }
 }
 
 .manual-banner {
-  background: #1a3b4b;
-  border: 1px solid #2f5f78;
-  color: #bfe8ff;
-  padding: 14px 18px;
-  border-radius: 12px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  color: var(--accent-hi);
+  padding: 12px 16px;
+  border-radius: var(--radius);
   margin-bottom: 14px;
   display: flex;
   justify-content: space-between;
@@ -307,16 +400,18 @@ input:focus, select:focus { outline: none; border-color: var(--accent); box-shad
   display: inline-block;
   min-width: 100%;
 }
+/* Both axis labels are now colored badges (see .team-badge) — the team's own
+   color is the badge's background rather than text color, so a dark brand
+   color like navy or purple never becomes unreadable on this dark theme. */
 .teamB-label {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  text-align: center;
+  padding: 6px 14px;
+  border-radius: var(--radius);
   font-weight: 800;
   font-size: 1.3rem;
-  color: var(--teamB);
-  padding: 6px 0;
   letter-spacing: 1px;
 }
 .teamA-label {
@@ -325,35 +420,76 @@ input:focus, select:focus { outline: none; border-color: var(--accent); box-shad
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 6px 0;
+  padding: 14px 6px;
+  border-radius: var(--radius);
 }
-.teamA-label .team-logo { flex-shrink: 0; }
+.teamA-label .team-logo { flex-shrink: 0; transform: rotate(-90deg); }
 .teamA-label-text {
   writing-mode: vertical-rl;
   transform: rotate(180deg);
   font-weight: 800;
   font-size: 1.3rem;
-  color: var(--teamA);
   text-align: center;
   letter-spacing: 1px;
 }
-.board-grid-outer { display: flex; }
-.row-axis-col { display: flex; flex-direction: column; }
+/* A light backdrop behind each team's logo so it reads against any badge
+   color, since logos aren't guaranteed to have their own contrast. */
+.teamA-label .team-logo, .teamB-label .team-logo {
+  background: rgba(255,255,255,0.85);
+  border-radius: 6px;
+  padding: 3px;
+}
+
+/* The one consistent way a team name appears anywhere in the app: a pill in
+   the team's own color with a logo and an auto-picked readable text color
+   (computed in ui.js) — see teamBadge(). Background/text color come from
+   inline style per instance since they vary per team, not per class. */
+.team-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 12px 3px 3px;
+  border-radius: 999px;
+  font-weight: 700;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+.team-badge .team-logo {
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.85);
+  padding: 2px;
+}
+.team-badge-name { white-space: nowrap; }
+.team-badge-sm { padding: 2px 9px 2px 2px; font-size: 0.78rem; }
+.team-badge-sm .team-logo { padding: 1px; }
+/* 2x2 grid: teamB's bar over the numbered columns (top-right), teamA's bar
+   beside the numbered rows (bottom-left) starting flush with the top of the
+   grid's own corner cell rather than stretched up alongside teamB's bar. The
+   top-left cell is intentionally empty. */
+.board-grid-outer {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+}
+.teamB-label { grid-column: 2; grid-row: 1; }
+.teamA-label { grid-column: 1; grid-row: 2; }
+.board-grid-outer .board-scroll { grid-column: 2; grid-row: 2; }
 .board-table {
   display: grid;
   grid-template-columns: repeat(11, minmax(58px, 1fr));
-  gap: 3px;
+  gap: 1px;
   background: var(--border);
-  padding: 3px;
-  border-radius: 10px;
+  padding: 1px;
+  border-radius: var(--radius);
 }
 .cell {
-  background: var(--panel2);
+  background: var(--panel);
   min-height: 58px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
+  border-radius: 4px;
   font-size: 0.82rem;
   font-weight: 700;
   text-align: center;
@@ -364,24 +500,22 @@ input:focus, select:focus { outline: none; border-color: var(--accent); box-shad
   transition: background 0.12s ease, transform 0.08s ease;
 }
 .cell.head {
-  background: #0d1526;
-  color: var(--muted);
+  background: var(--chrome-bg);
+  color: var(--chrome-fg);
   font-size: 1.15rem;
   font-weight: 800;
 }
 .cell.head.corner { background: transparent; }
-.cell.head.x { color: var(--teamB); }
-.cell.head.y { color: var(--teamA); }
-.cell.filled { background: linear-gradient(155deg, #28395e, #1c2947); color: #fff; cursor: default; }
+.cell.head.x, .cell.head.y { color: var(--accent); }
+/* Placeholder dash shown before axis numbers are assigned — plain white,
+   no color/shadow treatment, so it doesn't read as an actual drawn number. */
+.cell.head.pending { color: #fff; text-shadow: none; }
+.cell.filled { background: var(--panel2); color: var(--text); cursor: default; }
 .cell.empty-pick { cursor: pointer; color: var(--muted); }
-.cell.empty-pick:hover { background: #324873; transform: scale(1.03); }
-.cell.selected { background: linear-gradient(180deg, var(--accent-hi), var(--accent)); color: #1a1406; }
-.cell.pushed { background: linear-gradient(155deg, #5c1f2c, #3d1119); color: #ffb3c1; }
-.cell.winner {
-  background: linear-gradient(155deg, var(--accent-hi), var(--accent));
-  color: #1a1406;
-  box-shadow: 0 0 0 3px #fff inset, 0 0 18px rgba(255, 183, 3, 0.55);
-}
+.cell.empty-pick:hover { background: var(--accent-soft); }
+.cell.selected { background: var(--accent); color: var(--on-accent); }
+.cell.pushed { background: rgba(51, 18, 15, 0.75); color: var(--danger); }
+.cell.winner { color: var(--text); }
 .cell .badges {
   position: absolute;
   top: 2px;
@@ -399,7 +533,49 @@ input:focus, select:focus { outline: none; border-color: var(--accent); box-shad
   border-radius: 5px;
   font-weight: 800;
 }
+/* A winning square gets a diagonal ribbon across the top-right corner
+   instead of the badge pills — deliberately covers that corner, with the
+   ribbon's own text carrying which quarter(s) were won. */
+.cell .ribbon {
+  position: absolute;
+  top: 8px;
+  right: -27px;
+  width: 84px;
+  transform: rotate(45deg);
+  background: #facc15;
+  color: #1b1400;
+  font-size: 0.55rem;
+  font-weight: 800;
+  text-align: center;
+  padding: 2px 0;
+  letter-spacing: 0.3px;
+  line-height: 1.2;
+}
 .cell .name-txt { padding-top: 8px; font-size: 0.78rem; line-height: 1.1; }
+
+/* Unpaid squares: a quiet red ring around the cell — visible on a second
+   look, but not competing with the quarter-result badges or the winner
+   glow for attention. */
+.cell.is-unpaid { box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.5), 0 0 4px rgba(239, 68, 68, 0.25); }
+.cell.is-unpaid.winner { box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.6), 0 0 5px rgba(239, 68, 68, 0.35); }
+
+.board-legend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.board-legend .legend-chip {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  background: var(--panel2);
+  box-shadow: inset 0 0 0 2px var(--danger), 0 0 6px rgba(239, 68, 68, 0.55);
+}
 
 /* --- Step 3 results panels --- */
 .quarters {
@@ -409,9 +585,10 @@ input:focus, select:focus { outline: none; border-color: var(--accent); box-shad
   margin-bottom: 20px;
 }
 .qcard {
-  background: var(--panel2);
+  background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
   padding: 16px;
 }
 .qcard h4 {
@@ -481,17 +658,21 @@ input:focus, select:focus { outline: none; border-color: var(--accent); box-shad
   width: 18px;
   height: 18px;
   border-radius: 5px;
-  border: 1px solid rgba(255,255,255,0.25);
+  border: 1px solid var(--border-strong);
   display: inline-block;
 }
 .team-preview .match-txt { font-size: 0.85rem; font-weight: 600; color: var(--good); }
 .team-preview .match-txt.muted { color: var(--muted); font-weight: 500; }
 
-/* --- TV / Grid-Only View (optimized for 1080p) --- */
+/* --- TV / Grid-Only View (optimized for 1080p) ---
+   Drops to --chrome-bg rather than the page's --bg — a shade darker still,
+   for a television read from across the room under living-room glare. */
 .tv-screen {
+  --bg: var(--chrome-bg);
   position: fixed;
   inset: 0;
   background: var(--bg);
+  color: var(--text);
   display: flex;
   flex-direction: column;
   padding: 18px 28px 22px;
@@ -506,19 +687,6 @@ input:focus, select:focus { outline: none; border-color: var(--accent); box-shad
   gap: 10px;
   margin-bottom: 12px;
 }
-.tv-matchup {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  font-size: 2.6rem;
-  font-weight: 800;
-  letter-spacing: 0.5px;
-}
-.tv-matchup .tv-vs {
-  color: var(--muted);
-  font-size: 1.6rem;
-  font-weight: 600;
-}
 .tv-meta {
   display: flex;
   gap: 22px;
@@ -526,19 +694,41 @@ input:focus, select:focus { outline: none; border-color: var(--accent); box-shad
   font-weight: 700;
   color: var(--accent);
 }
-.tv-exit {
+/* Controls sit over the grid and fade out after a few idle seconds so the
+   television shows nothing but the board. Any tap or mouse move revives them. */
+.tv-controls {
   position: fixed;
   top: 14px;
   right: 20px;
-  opacity: 0.35;
+  display: flex;
+  gap: 10px;
+  z-index: 10;
+  transition: opacity 0.4s ease;
+}
+.tv-btn {
+  opacity: 0.4;
   background: var(--panel2);
   color: var(--text);
   border: 1px solid var(--border);
   font-size: 0.85rem;
   padding: 8px 14px;
-  z-index: 10;
 }
-.tv-exit:hover { opacity: 1; }
+.tv-btn:hover { opacity: 1; }
+.tv-screen.chrome-hidden .tv-controls { opacity: 0; pointer-events: none; }
+.tv-screen.chrome-hidden { cursor: none; }
+
+/* Real fullscreen: reclaim the padding so the grid runs edge to edge, and give
+   the board the room the header was using. */
+body.tv-fullscreen .tv-screen { padding: 10px 14px 14px; }
+body.tv-fullscreen .tv-header { margin-bottom: 6px; }
+body.tv-fullscreen .tv-meta { font-size: 1.5rem; }
+
+/* Give the grid every spare pixel on a 16:9 screen. */
+@media (min-aspect-ratio: 3/2) {
+  .tv-board-wrap .cell { font-size: clamp(1rem, 1.9vw, 2rem); }
+  .tv-board-wrap .cell.head { font-size: clamp(1.5rem, 2.7vw, 3rem); }
+  .tv-board-wrap .cell .name-txt { font-size: clamp(0.95rem, 1.75vw, 1.85rem); }
+}
 
 .tv-board-wrap {
   flex: 1 1 auto;
@@ -547,8 +737,8 @@ input:focus, select:focus { outline: none; border-color: var(--accent); box-shad
   align-items: stretch;
   justify-content: center;
 }
-.tv-board-wrap .board-grid-outer { display: flex; width: 100%; height: 100%; }
-.tv-board-wrap .board-scroll { flex: 1 1 auto; overflow: hidden; height: 100%; padding-bottom: 0; }
+.tv-board-wrap .board-grid-outer { width: 100%; height: 100%; }
+.tv-board-wrap .board-scroll { overflow: hidden; padding-bottom: 0; }
 .tv-board-wrap .board-table {
   height: 100%;
   grid-template-rows: repeat(11, 1fr);
@@ -585,8 +775,8 @@ input:focus, select:focus { outline: none; border-color: var(--accent); box-shad
   justify-content: space-between;
   margin-bottom: 14px;
 }
-.manage-modal-head h3 { margin: 0; color: var(--text); font-size: 1.3rem; }
-.modal-close { padding: 8px 12px; border-radius: 8px; }
+.manage-modal-head h3 { margin: 0; color: var(--text); font-family: var(--serif); font-size: 1.25rem; }
+.modal-close { padding: 8px 12px; border-radius: var(--radius); }
 
 .player-list {
   display: flex;
@@ -602,36 +792,207 @@ input:focus, select:focus { outline: none; border-color: var(--accent); box-shad
   gap: 14px;
   background: var(--panel2);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius);
   padding: 12px 16px;
   flex-wrap: wrap;
 }
 .player-info { flex: 1 1 140px; min-width: 120px; }
-.player-name { font-weight: 800; font-size: 1.05rem; }
+.player-name { font-weight: 700; font-size: 1.05rem; }
 .player-sub { color: var(--muted); font-size: 0.85rem; margin-top: 2px; }
 
 .paid-toggle {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-weight: 700;
+  font-weight: 600;
   padding: 8px 14px;
   border-radius: 999px;
-  background: #3a2712;
-  color: #ffcf7a;
+  background: var(--warn-soft);
+  color: var(--warn);
   cursor: pointer;
   white-space: nowrap;
 }
 .paid-toggle input { width: 18px; height: 18px; accent-color: var(--good); cursor: pointer; }
-.paid-toggle.is-paid { background: #143a2c; color: #7affa0; }
+.paid-toggle.is-paid { background: var(--good-soft); color: var(--good); }
 
 .unpaid-summary {
   margin-top: 16px;
   padding: 12px 16px;
   background: var(--panel2);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius);
   font-size: 1rem;
   text-align: right;
 }
 .unpaid-summary strong { color: var(--danger); font-size: 1.15rem; }
+
+/* --- Phone score entry (#score-YYYY) --------------------------------------
+   One-thumb quarter entry, used while the grid is up on the television.
+   Digits are tapped rather than typed so no keyboard covers the screen. */
+body.phone-mode { background: var(--bg); }
+body.phone-mode #app { padding: 0; }
+
+.phone-screen {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 14px 14px calc(24px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.phone-screen.is-saving { opacity: 0.75; }
+
+.phone-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--bg);
+  padding: 10px 2px 8px;
+  border-bottom: 1px solid var(--border);
+}
+.phone-matchup {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 1.15rem;
+  font-weight: 800;
+  flex-wrap: wrap;
+}
+.phone-matchup .pm-vs { color: var(--muted); font-weight: 600; font-size: 0.9rem; }
+.phone-matchup .team-badge { font-size: 1.05rem; }
+.phone-sub {
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin-top: 4px;
+}
+
+.phone-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.phone-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 4px;
+  min-height: 54px;
+  background: var(--panel2);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+.phone-tab.done { color: var(--good); }
+.phone-tab.active {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: var(--accent);
+}
+
+.phone-amount {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.phone-amount .pa-label { color: var(--muted); font-size: 0.9rem; font-weight: 600; }
+.phone-amount .pa-value { color: var(--accent); font-size: 1.4rem; font-weight: 700; }
+
+.phone-keypad {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  padding: 12px;
+}
+.phone-keypad + .phone-keypad { margin-top: 10px; }
+.pk-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.pk-current {
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1;
+  min-width: 42px;
+  text-align: center;
+}
+.pk-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+.pk-key {
+  /* 52px floor keeps every key comfortably tappable with a thumb. */
+  min-height: 52px;
+  padding: 0;
+  font-size: 1.3rem;
+  font-weight: 700;
+  background: var(--panel2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.pk-key.selected {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: var(--accent);
+}
+.pk-key.pk-clear { font-size: 0.8rem; color: var(--muted); letter-spacing: 0.3px; }
+
+.phone-outcome {
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  font-weight: 700;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+.phone-outcome.pending { background: var(--panel2); color: var(--muted); }
+.phone-outcome.push { background: var(--danger-soft); color: var(--danger); }
+.phone-outcome.win { background: var(--good-soft); color: var(--good); }
+
+.phone-draw { width: 100%; min-height: 54px; font-size: 1.05rem; }
+
+.phone-winners {
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+}
+.pw-head { color: var(--muted); font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+.pw-row { display: flex; align-items: baseline; gap: 10px; padding: 4px 0; font-size: 0.95rem; }
+.pw-row span:first-child { color: var(--muted); font-weight: 700; min-width: 46px; }
+.pw-row strong { flex: 1; }
+.pw-row .pw-amt { color: var(--accent); font-weight: 800; }
+
+.phone-link-list { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; }
+.phone-link-row { display: flex; align-items: center; gap: 12px; }
+.phone-link-row .phone-link { flex: 1; min-width: 0; }
+/* White plate behind the code: scanners need the light quiet zone, which the
+   dark theme would otherwise swallow. */
+.phone-qr {
+  flex: none;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px;
+  line-height: 0;
+}
+.phone-qr svg { display: block; }
+@media (max-width: 480px) {
+  .phone-link-row { flex-direction: column; align-items: stretch; }
+  .phone-qr { align-self: center; }
+}
+.phone-link {
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  font-family: var(--mono);
+  font-size: 1rem;
+  color: var(--accent);
+  user-select: all;
+  word-break: break-all;
+}

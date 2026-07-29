@@ -4,7 +4,8 @@
   "description": "Local-network Super Bowl squares grid game",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node test.js"
   },
   "license": "MIT"
 }
