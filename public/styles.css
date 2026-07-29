@@ -156,19 +156,24 @@ h3 { font-family: var(--serif); font-size: 1.15rem; color: var(--text); font-wei
   text-transform: uppercase;
   letter-spacing: 0.3px;
 }
-/* Shared style for every delete/remove action in the app — outlined red
-   rather than a solid fill, so it reads as destructive without competing
-   with the solid --accent buttons for visual weight. */
+/* Shared style for every delete/remove action in the app — muted and
+   outlined by default so it doesn't compete for attention next to the
+   solid --accent buttons, only turning red to confirm its intent once the
+   host is actually about to use it. */
 button.ghost.btn-delete {
   padding: 6px 12px;
   font-size: 0.78rem;
   font-weight: 700;
   border-radius: var(--radius);
-  color: var(--danger);
-  border: 1px solid var(--danger);
+  color: var(--muted);
+  border: 1px solid var(--border);
   background: var(--panel);
 }
-button.ghost.btn-delete:hover { border-color: var(--danger); background: var(--danger-soft); }
+button.ghost.btn-delete:hover, button.ghost.btn-delete:focus-visible {
+  color: var(--danger);
+  border-color: var(--danger-border);
+  background: var(--danger-soft);
+}
 .year-card-delete { position: absolute; top: 12px; right: 12px; }
 .status-setup { background: var(--warn-soft); color: var(--warn); }
 .status-picking { background: var(--accent-soft); color: var(--accent-hi); }
