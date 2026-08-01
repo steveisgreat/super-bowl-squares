@@ -40,7 +40,8 @@ function makeGame(claims, opts) {
     squares[r * 10 + c] = { name: claims[k] };
   });
   return {
-    year: 2026,
+    league: 'nfl',
+    gameDate: '2026-02-08',
     teamA: 'Chiefs',
     teamB: 'Eagles',
     squarePrice: o.squarePrice === undefined ? 10 : o.squarePrice,
@@ -229,9 +230,24 @@ check('a well-formed game validates', () => {
   eq(G.validateGame(fullGame()), null, 'validation error');
 });
 
-check('validation rejects a bad year', () => {
-  const g = fullGame(); g.year = 'abc';
-  assert(G.validateGame(g), 'expected an error for a non-numeric year');
+check('validation rejects a bad league', () => {
+  const g = fullGame(); g.league = 'mlb';
+  assert(G.validateGame(g), 'expected an error for an unsupported league');
+});
+
+check('validation rejects a missing game date', () => {
+  const g = fullGame(); g.gameDate = '';
+  assert(G.validateGame(g), 'expected an error for a missing game date');
+});
+
+check('validation rejects a malformed custom team color', () => {
+  const g = fullGame(); g.league = 'other'; g.teamAColor = 'not-a-color';
+  assert(G.validateGame(g), 'expected an error for a bad hex color');
+});
+
+check('validation accepts the other league with valid custom colors', () => {
+  const g = fullGame(); g.league = 'other'; g.teamAColor = '#336699'; g.teamBColor = '#ff0000';
+  eq(G.validateGame(g), null, 'validation error');
 });
 
 check('validation rejects a grid that is not 100 squares', () => {

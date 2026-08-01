@@ -6,6 +6,13 @@
   const SBS = window.SBS = window.SBS || {};
   const { el, escapeHtml, money, overlayEl, showChoice, showConfirm, showAlert } = SBS.ui;
 
+  const MAX_NAME_LEN = 10;
+
+  const EDIT_ICON = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <path d="M4 20h4L18.5 9.5a2 2 0 0 0 0-2.8l-1.2-1.2a2 2 0 0 0-2.8 0L4 16v4Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M13 6l3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  </svg>`;
+
   const SUBSCRIPT_MAP = { '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄', '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉' };
   const SUBSCRIPT_REV = { '₀': '0', '₁': '1', '₂': '2', '₃': '3', '₄': '4', '₅': '5', '₆': '6', '₇': '7', '₈': '8', '₉': '9' };
 
@@ -154,7 +161,7 @@
         Object.assign(game, saved);
       } catch (e) {
         overlay.remove();
-        if (await SBS.handleConflict(e, game.year)) return;
+        if (await SBS.handleConflict(e, game.id)) return;
         showAlert('Failed to save: ' + e.message);
         return;
       }
@@ -180,7 +187,10 @@
           const row = el('div', 'player-row');
           row.innerHTML = `
             <div class="player-info">
-              <div class="player-name">${escapeHtml(p.name)}</div>
+              <div class="player-name-row">
+                <span class="player-name">${escapeHtml(p.name)}</span>
+                <button class="icon-btn player-rename" type="button" aria-label="Rename player" title="Rename">${EDIT_ICON}</button>
+              </div>
               <div class="player-sub">${p.count} square${p.count === 1 ? '' : 's'} &middot; ${money(p.owed)} ${p.paid ? 'paid' : 'owed'}</div>
             </div>
             <label class="paid-toggle ${p.paid ? 'is-paid' : ''}">
@@ -193,6 +203,34 @@
             const players = ensurePlayers(game);
             players[p.name] = Object.assign({}, players[p.name], { paid: e.target.checked });
             await persistAndRefresh();
+          });
+          row.querySelector('.player-rename').addEventListener('click', () => {
+            const nameRow = row.querySelector('.player-name-row');
+            nameRow.innerHTML = `
+              <input type="text" class="player-name-input" maxlength="${MAX_NAME_LEN}" value="${escapeHtml(p.name)}">
+              <button class="icon-btn player-rename-save" type="button" aria-label="Save name" title="Save">&#10003;</button>
+              <button class="icon-btn player-rename-cancel" type="button" aria-label="Cancel rename" title="Cancel">&#10005;</button>
+            `;
+            const input = nameRow.querySelector('.player-name-input');
+            input.focus();
+            input.select();
+
+            async function commit() {
+              const newName = input.value.trim().slice(0, MAX_NAME_LEN);
+              if (!newName) return showAlert('Name cannot be empty.');
+              if (newName === p.name) return renderList();
+              const collision = Object.keys(ensurePlayers(game))
+                .find(n => n.toLowerCase() === newName.toLowerCase() && n !== p.name);
+              if (collision) return showAlert(`"${collision}" is already a player in this game. Choose a different name.`);
+              renameSquares(game, p.name, newName);
+              await persistAndRefresh();
+            }
+            nameRow.querySelector('.player-rename-save').addEventListener('click', commit);
+            nameRow.querySelector('.player-rename-cancel').addEventListener('click', () => renderList());
+            input.addEventListener('keydown', (e) => {
+              if (e.key === 'Enter') commit();
+              else if (e.key === 'Escape') renderList();
+            });
           });
           row.querySelector('button.btn-delete').addEventListener('click', async () => {
             const startedWarning = (game.status === 'started' || game.status === 'finished') ? ' The game has already started — this may change quarter results tied to their square(s).' : '';

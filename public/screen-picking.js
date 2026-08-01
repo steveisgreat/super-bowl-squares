@@ -4,7 +4,7 @@
 
   const SBS = window.SBS = window.SBS || {};
   const { el, escapeHtml, money, topbar, showConfirm, showAlert, applyTeamColors, teamBadge, fitTeamBadges } = SBS.ui;
-  const { unpaidTotal, openManagePlayersModal, resolveNameForPick, markPlayerPaid } = SBS.players;
+  const { unpaidTotal, openManagePlayersModal, resolveNameForPick, markPlayerPaid, ensurePlayerColor } = SBS.players;
   const { shuffle, lockGame } = window.GameLogic;
 
   // Guards the one irreversible action in the app (drawing the axis numbers).
@@ -17,7 +17,8 @@
     app.innerHTML = '';
     const reopen = () => SBS.go({ screen: 'picking', game });
 
-    const bar = topbar(`${teamBadge(game.teamA, 'A', { logoSize: 22, cls: 'team-badge-sm' })}<span class="vs-sep">vs</span>${teamBadge(game.teamB, 'B', { logoSize: 22, cls: 'team-badge-sm' })}<span class="header-year">${game.year}</span>`);
+    const headerMeta = [SBS.ui.leagueBadge(game.league), game.description ? escapeHtml(game.description) : (game.gameDate || '')].filter(Boolean).join(' &middot; ');
+    const bar = topbar(`${teamBadge(game, 'A', { logoSize: 22, cls: 'team-badge-sm' })}<span class="vs-sep">vs</span>${teamBadge(game, 'B', { logoSize: 22, cls: 'team-badge-sm' })}<span class="header-year">${headerMeta}</span>`);
     const nav = bar.querySelector('.nav');
     const manageBtn = el('button', 'secondary', 'Manage Players');
     manageBtn.addEventListener('click', () => openManagePlayersModal(game, reopen));
@@ -35,12 +36,10 @@
 
     const strip = el('div', 'stat-strip');
     strip.innerHTML = `
-      <div class="stat-box"><div class="val">${filled}</div><div class="lbl">Squares Sold</div></div>
       <div class="stat-box"><div class="val">${100 - filled}</div><div class="lbl">Squares Available</div></div>
       <div class="stat-box"><div class="val">${money(game.squarePrice)}</div><div class="lbl">Per Square</div></div>
       <div class="stat-box"><div class="val">${money(filled * game.squarePrice)}</div><div class="lbl">Pot So Far</div></div>
       <div class="stat-box ${unpaid > 0 ? 'warn' : ''} clickable" id="unpaid-stat"><div class="val">${money(unpaid)}</div><div class="lbl">Unpaid Total</div></div>
-      <div class="stat-box"><div class="val">${game.autoCutoffEnabled ? new Date(game.autoCutoffTime).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '—'}</div><div class="lbl">Auto Cutoff</div></div>
     `;
     main.appendChild(strip);
     strip.querySelector('#unpaid-stat').addEventListener('click', () => openManagePlayersModal(game, reopen));
@@ -63,7 +62,7 @@
       <label>Player Name</label>
       <input type="text" id="p-name" placeholder="Enter name" maxlength="10">
       <label># of Squares</label>
-      <input type="number" id="p-count" value="1" min="1" max="100">
+      <input type="number" id="p-count" min="1" max="100">
       <label class="checkbox-label"><input type="checkbox" id="p-paid" checked> <span>Mark as Paid</span></label>
     `;
     formCard.appendChild(formWrap);
@@ -166,7 +165,7 @@
         const saved = await SBS.api.saveGame(game);
         SBS.go({ screen: 'picking', game: saved });
       } catch (e) {
-        if (await SBS.handleConflict(e, game.year)) return;
+        if (await SBS.handleConflict(e, game.id)) return;
         showErr('Failed to save: ' + e.message);
       }
     }
@@ -198,6 +197,7 @@
         selecting: manualSelecting,
         selected: manualSelected,
         target: manualTarget,
+        pickColor: manualSelecting ? ensurePlayerColor(game, manualName) : null,
         onToggle: (idx) => {
           const pos = manualSelected.indexOf(idx);
           if (pos >= 0) {
@@ -229,7 +229,7 @@
         SBS.go({ screen: 'board', game: saved });
       } catch (e) {
         lockInFlight = false;
-        if (await SBS.handleConflict(e, game.year)) return;
+        if (await SBS.handleConflict(e, game.id)) return;
         game.status = 'picking';
         showAlert('Failed to start game: ' + e.message);
       }
@@ -253,11 +253,15 @@
     SBS.setManagedInterval(async () => {
       if (SBS.currentScreen() !== 'picking' || manualSelecting || lockInFlight) return;
       try {
-        const fresh = await SBS.api.getGame(game.year);
+        const fresh = await SBS.api.getGame(game.id);
         if (fresh.updatedAt && fresh.updatedAt !== game.updatedAt) {
           SBS.go({ screen: (fresh.status === 'started' || fresh.status === 'finished') ? 'board' : 'picking', game: fresh });
         }
-      } catch (e) { /* offline or server restarting — try again next tick */ }
+      } catch (e) {
+        // Deleted on another device — nothing left here to show.
+        if (e && e.status === 404) SBS.go({ screen: 'home' });
+        // Otherwise offline or server restarting — try again next tick.
+      }
     }, 6000);
   }
 

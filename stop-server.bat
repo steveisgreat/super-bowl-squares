@@ -1,5 +1,5 @@
 @echo off
-echo Stopping Super Bowl Squares server (port 3000)...
+echo Stopping $uper-$quares server (port 3000)...
 echo.
 
 setlocal enabledelayedexpansion

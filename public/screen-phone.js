@@ -7,9 +7,9 @@
   const SBS = window.SBS = window.SBS || {};
   const { el, escapeHtml, money, showAlert, applyTeamColors, teamBadge, fitTeamBadges } = SBS.ui;
   const { openManagePlayersModal } = SBS.players;
-  const { QUARTERS, QLABEL, computeGame } = window.GameLogic;
+  const { QUARTERS, QLABEL, computeGame, payoutAmount } = window.GameLogic;
 
-  function renderPhone(year) {
+  function renderPhone(id, backScreen) {
     const app = SBS.appEl;
     app.innerHTML = '';
     document.body.classList.add('phone-mode');
@@ -46,11 +46,11 @@
 
       header.innerHTML = `
         <div class="phone-matchup badge-fit">
-          ${teamBadge(game.teamA, 'A', { logoSize: 22 })}
+          ${teamBadge(game, 'A', { logoSize: 22 })}
           <span class="pm-vs">vs</span>
-          ${teamBadge(game.teamB, 'B', { logoSize: 22 })}
+          ${teamBadge(game, 'B', { logoSize: 22 })}
         </div>
-        <div class="phone-sub">${game.year} &middot; Pot ${money(computed.pot)}</div>
+        <div class="phone-sub">${SBS.ui.leagueBadge(game.league)} ${game.description ? escapeHtml(game.description) + ' &middot; ' : ''}Pot ${money(computed.pot)}</div>
       `;
       fitTeamBadges(header);
 
@@ -58,9 +58,12 @@
       const manageBtn = el('button', 'phone-action-btn', 'Manage Players');
       manageBtn.type = 'button';
       manageBtn.addEventListener('click', () => openManagePlayersModal(game, draw));
-      const gridBtn = el('button', 'phone-action-btn', 'Back to Grid');
+      const gridBtn = el('button', 'phone-action-btn', 'Back');
       gridBtn.type = 'button';
-      gridBtn.addEventListener('click', () => SBS.go({ screen: 'board', game }));
+      gridBtn.addEventListener('click', () => {
+        if (backScreen === 'home') SBS.go({ screen: 'home' });
+        else SBS.go({ screen: 'board', game });
+      });
       actions.appendChild(manageBtn);
       actions.appendChild(gridBtn);
       header.appendChild(actions);
@@ -81,11 +84,11 @@
       panel.innerHTML = '';
 
       const amtRow = el('div', 'phone-amount');
-      amtRow.innerHTML = `<span class="pa-label">${activeQ === 'final' ? 'Final Score' : QLABEL[activeQ]} pays</span><span class="pa-value">${money(res.amount)}</span>`;
+      amtRow.innerHTML = `<span class="pa-label">${activeQ === 'final' ? 'Final Score' : QLABEL[activeQ]} pays</span><span class="pa-value">${money(payoutAmount(res))}</span>`;
       panel.appendChild(amtRow);
 
-      panel.appendChild(keypadFor('a', game.teamA, res.a, 'pk-a'));
-      panel.appendChild(keypadFor('b', game.teamB, res.b, 'pk-b'));
+      panel.appendChild(keypadFor('a', res.a, 'pk-a'));
+      panel.appendChild(keypadFor('b', res.b, 'pk-b'));
       fitTeamBadges(panel);
 
       const outcome = el('div', 'phone-outcome');
@@ -113,7 +116,10 @@
           if (!filledIdx.length) { showAlert('No squares are filled in — cannot draw a winner.'); return; }
           const idx = filledIdx[Math.floor(Math.random() * filledIdx.length)];
           if (!game.results.final) game.results.final = {};
-          game.results.final.autoResolve = { key: `${res.row}-${res.col}`, row: Math.floor(idx / 10), col: idx % 10 };
+          // drawnAt lets the board and TV grid — which learn about this via
+          // their own polls — play the same countdown/spin reveal in sync
+          // instead of the winner just appearing.
+          game.results.final.autoResolve = { key: `${res.row}-${res.col}`, row: Math.floor(idx / 10), col: idx % 10, drawnAt: Date.now() };
           await save();
         });
         panel.appendChild(drawBtn);
@@ -128,10 +134,10 @@
         : '';
     }
 
-    function keypadFor(side, teamName, current, cls) {
+    function keypadFor(side, current, cls) {
       const box = el('div', 'phone-keypad ' + cls);
       const head = el('div', 'pk-head badge-fit');
-      head.innerHTML = `${teamBadge(teamName, side === 'a' ? 'A' : 'B', { logoSize: 18, cls: 'team-badge-sm' })}<span class="pk-current">${current === null || current === '' ? '–' : current}</span>`;
+      head.innerHTML = `${teamBadge(game, side === 'a' ? 'A' : 'B', { logoSize: 18, cls: 'team-badge-sm' })}<span class="pk-current">${current === null || current === '' ? '–' : current}</span>`;
       box.appendChild(head);
 
       // Full numeric keyboard (phone dialer layout) so multi-digit scores can
@@ -197,7 +203,7 @@
         if (e && e.conflict) {
           // Someone edited on the iPad at the same moment — take the server's
           // copy rather than fighting over it.
-          game = e.game && e.game.squares ? e.game : await SBS.api.getGame(year);
+          game = e.game && e.game.squares ? e.game : await SBS.api.getGame(id);
           draw();
           showAlert('That score was changed on another device — showing the latest version.');
         } else {
@@ -211,7 +217,7 @@
 
     async function load(initial) {
       try {
-        const fresh = await SBS.api.getGame(year);
+        const fresh = await SBS.api.getGame(id);
         if (initial) {
           game = fresh;
           activeQ = firstUnscored(fresh);
@@ -219,7 +225,7 @@
             panel.innerHTML = '';
             footer.innerHTML = '';
             tabs.innerHTML = '';
-            header.innerHTML = `<div class="phone-sub">Squares for ${year} are still being picked — score entry opens once the board is locked.</div>`;
+            header.innerHTML = `<div class="phone-sub">Squares for this game are still being picked — score entry opens once the board is locked.</div>`;
             return;
           }
           draw();
@@ -228,7 +234,12 @@
           draw();
         }
       } catch (e) {
-        header.innerHTML = `<div class="error-msg">Could not load ${year}: ${escapeHtml(e.message)}</div>`;
+        // Deleted on another device — nothing left here to show.
+        if (e && e.status === 404) {
+          SBS.go({ screen: 'home' });
+          return;
+        }
+        header.innerHTML = `<div class="error-msg">Could not load this game: ${escapeHtml(e.message)}</div>`;
       }
     }
 

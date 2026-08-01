@@ -1,12 +1,14 @@
 const http = require('http');
 const https = require('https');
 const net = require('net');
+const crypto = require('crypto');
 const selfsigned = require('selfsigned');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const GameLogic = require('./public/compute.js');
-const { startLiveScorePolling } = require('./server-livescore.js');
+const LiveScore = require('./server-livescore.js');
+const { startLiveScorePolling } = LiveScore;
 
 const PORT = process.env.PORT || 3000;
 const DATA_DIR = path.join(__dirname, 'data');
@@ -64,12 +66,16 @@ function readBody(req) {
   });
 }
 
-// Only ever accepts a real 4-digit year, so a junk value can never produce a
-// stray file such as `.json` in the data folder.
-function yearFile(year) {
-  const y = String(year).trim();
-  if (!/^\d{4}$/.test(y)) return null;
-  return path.join(DATA_DIR, `${y}.json`);
+// Every game gets a server-generated UUID as its permanent identity — this is
+// what makes multiple games (any year, any sport) coexist without collision,
+// now that a game is no longer keyed by its year. Only ever accepts that exact
+// shape, so a junk value can never produce a stray file such as `.json` in
+// the data folder.
+const ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function gameFile(id) {
+  const s = String(id).trim();
+  if (!ID_RE.test(s)) return null;
+  return path.join(DATA_DIR, `${s}.json`);
 }
 
 // Atomic save: write a temp file and rename over the target. A crash, power cut
@@ -106,16 +112,21 @@ function applyAutoCutoff(game, file) {
   return game;
 }
 
-function listYears() {
-  const files = fs.readdirSync(DATA_DIR).filter(f => /^\d{4}\.json$/.test(f));
+function listGames() {
+  const files = fs.readdirSync(DATA_DIR).filter(f => ID_RE.test(f.replace(/\.json$/, '')));
   const games = files.map(f => {
     try {
       const full = path.join(DATA_DIR, f);
       const g = applyAutoCutoff(readGameFile(full), full);
       return {
-        year: g.year,
+        id: g.id,
         teamA: g.teamA,
         teamB: g.teamB,
+        league: g.league,
+        teamAColor: g.teamAColor,
+        teamBColor: g.teamBColor,
+        description: g.description || '',
+        gameDate: g.gameDate,
         status: g.status,
         updatedAt: g.updatedAt || null
       };
@@ -124,13 +135,13 @@ function listYears() {
       return null;
     }
   }).filter(Boolean);
-  games.sort((a, b) => b.year - a.year);
+  games.sort((a, b) => (b.gameDate || '').localeCompare(a.gameDate || ''));
   return games;
 }
 
-async function handleApi(req, res, pathname) {
-  if (pathname === '/api/years' && req.method === 'GET') {
-    return sendJSON(res, 200, listYears());
+async function handleApi(req, res, pathname, query) {
+  if (pathname === '/api/games' && req.method === 'GET') {
+    return sendJSON(res, 200, listGames());
   }
 
   // Lets the Game Day screen print the address to type into a phone — the
@@ -139,17 +150,26 @@ async function handleApi(req, res, pathname) {
     return sendJSON(res, 200, { port: PORT, httpsReady, addresses: localIPs() });
   }
 
-  const gameMatch = pathname.match(/^\/api\/game\/(\d{4})$/);
+  // Feeds the "Games" picker on the New Game setup screen. null distinctly
+  // means ESPN couldn't be reached at all (502), vs. a real empty schedule
+  // ([], 200) — the client shows different text for each.
+  if (pathname === '/api/todays-games' && req.method === 'GET') {
+    const games = await LiveScore.getTodaysGames(query.get('date'), query.get('league'));
+    if (games === null) return sendJSON(res, 502, { error: 'ESPN API not available' });
+    return sendJSON(res, 200, { games });
+  }
+
+  const gameMatch = pathname.match(/^\/api\/game\/([0-9a-f-]{36})$/i);
   if (gameMatch && req.method === 'GET') {
-    const file = yearFile(gameMatch[1]);
-    if (!fs.existsSync(file)) return sendJSON(res, 404, { error: 'Not found' });
+    const file = gameFile(gameMatch[1]);
+    if (!file || !fs.existsSync(file)) return sendJSON(res, 404, { error: 'Not found' });
     const game = applyAutoCutoff(readGameFile(file), file);
     return sendJSON(res, 200, game);
   }
 
   if (gameMatch && req.method === 'DELETE') {
-    const file = yearFile(gameMatch[1]);
-    if (!fs.existsSync(file)) return sendJSON(res, 404, { error: 'Not found' });
+    const file = gameFile(gameMatch[1]);
+    if (!file || !fs.existsSync(file)) return sendJSON(res, 404, { error: 'Not found' });
     fs.unlinkSync(file);
     return sendJSON(res, 200, { ok: true });
   }
@@ -161,14 +181,10 @@ async function handleApi(req, res, pathname) {
     } catch (e) {
       return sendJSON(res, 400, { error: 'Invalid JSON' });
     }
-    const file = yearFile(body.year);
-    if (!file) return sendJSON(res, 400, { error: 'A valid 4-digit year is required.' });
+    body.id = crypto.randomUUID();
     const invalid = GameLogic.validateGame(body);
     if (invalid) return sendJSON(res, 400, { error: invalid });
-    if (fs.existsSync(file)) {
-      return sendJSON(res, 409, { error: `A game for ${body.year} already exists.` });
-    }
-    body.year = parseInt(body.year, 10);
+    const file = gameFile(body.id);
     body.createdAt = new Date().toISOString();
     body.updatedAt = body.createdAt;
     writeGameFile(file, body);
@@ -182,9 +198,9 @@ async function handleApi(req, res, pathname) {
     } catch (e) {
       return sendJSON(res, 400, { error: 'Invalid JSON' });
     }
-    const file = yearFile(gameMatch[1]);
+    const file = gameFile(gameMatch[1]);
     const clientUpdatedAt = body.updatedAt || null;
-    body.year = parseInt(gameMatch[1], 10);
+    body.id = gameMatch[1].toLowerCase();
     GameLogic.syncStatus(body);
 
     const invalid = GameLogic.validateGame(body);
@@ -247,7 +263,7 @@ function requestListener(req, res) {
   const pathname = url.pathname;
 
   if (pathname.startsWith('/api/')) {
-    handleApi(req, res, pathname).catch(e => {
+    handleApi(req, res, pathname, url.searchParams).catch(e => {
       sendJSON(res, 500, { error: e.message });
     });
   } else {
@@ -308,7 +324,7 @@ async function startHttpsServer() {
 
 function logStartup() {
   console.log('');
-  console.log('  Super Bowl Grid Game server is running!');
+  console.log('  $uper-$quares server is running!');
   console.log('');
   console.log(`  On this PC:      http://localhost:${PORT}`);
   const ips = localIPs();

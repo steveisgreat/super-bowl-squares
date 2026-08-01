@@ -86,18 +86,102 @@
     <path d="M6 10v9a1 1 0 0 0 1 1h3.5v-5.5a1.5 1.5 0 0 1 1.5-1.5v0a1.5 1.5 0 0 1 1.5 1.5V20H17a1 1 0 0 0 1-1v-9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
   </svg>`;
 
+  const TV_ICON = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <rect x="3" y="5" width="18" height="12" rx="2" stroke="currentColor" stroke-width="2"/>
+    <path d="M8 21h8M12 17v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  </svg>`;
+  const PHONE_ICON = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <rect x="7" y="2" width="10" height="20" rx="2" stroke="currentColor" stroke-width="2"/>
+    <path d="M11 18h2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  </svg>`;
+  const PEOPLE_ICON = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <circle cx="9" cy="8" r="3" stroke="currentColor" stroke-width="2"/>
+    <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="17" cy="9" r="2.5" stroke="currentColor" stroke-width="2"/>
+    <path d="M15.5 14.2c2.8.4 5 2.7 5 5.8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  </svg>`;
+
+  // Smart TV browsers (Samsung Tizen, LG webOS, generic HbbTV) identify
+  // themselves in the UA string even though they otherwise look like a
+  // plain desktop Chrome — Tizen's UA has no "Windows"/"Mac OS X"/"Linux"
+  // distro marker recognized below, so detectDeviceInfo() falls through to
+  // "Desktop". This is a separate, narrower check just for that.
+  function isTvBrowser() {
+    return /SMART-TV|SmartTV|Tizen|Web0S|WebOS|HbbTV|NETCAST|BRAVIA|GoogleTV|AFT[A-Z]/i.test(navigator.userAgent || '');
+  }
+
+  // Phone vs. tablet/desktop, using the same UA heuristic as
+  // detectDeviceInfo()'s "Mobile" classification (iPad/Android-tablet
+  // excluded so this only flags actual phone-sized screens).
+  function isPhone() {
+    const ua = navigator.userAgent || '';
+    const isTouch = (navigator.maxTouchPoints || 0) > 0 || 'ontouchstart' in window;
+    const isIpad = /iPad/.test(ua) || (/Macintosh/.test(ua) && isTouch);
+    return /Mobi|iPhone|Android.*Mobile/.test(ua) && !isIpad;
+  }
+
+  // Best-effort device fingerprint for the header icon's hover tooltip —
+  // parsed from the UA string, so it's a guess (especially on iPadOS, which
+  // reports itself as Mac) rather than a guarantee.
+  function detectDeviceInfo() {
+    const ua = navigator.userAgent || '';
+    const isTouch = (navigator.maxTouchPoints || 0) > 0 || 'ontouchstart' in window;
+    const isIpad = /iPad/.test(ua) || (/Macintosh/.test(ua) && isTouch);
+    let type = 'Desktop';
+    if (/Mobi|iPhone|Android.*Mobile/.test(ua) && !isIpad) type = 'Mobile';
+    else if (/iPad|Tablet|Android(?!.*Mobile)/.test(ua) || isIpad) type = 'Tablet';
+
+    let os = 'Unknown OS';
+    if (isIpad) os = 'iPadOS';
+    else if (/iPhone|iOS/.test(ua)) os = 'iOS';
+    else if (/Android/.test(ua)) os = 'Android';
+    else if (/Windows/.test(ua)) os = 'Windows';
+    else if (/Mac OS X/.test(ua)) os = 'macOS';
+    else if (/Linux/.test(ua)) os = 'Linux';
+
+    let browser = 'Unknown Browser';
+    if (/Edg\//.test(ua)) browser = 'Edge';
+    else if (/OPR\//.test(ua)) browser = 'Opera';
+    else if (/Chrome\//.test(ua) && !/Chromium/.test(ua)) browser = 'Chrome';
+    else if (/CriOS\//.test(ua)) browser = 'Chrome (iOS)';
+    else if (/Firefox\//.test(ua)) browser = 'Firefox';
+    else if (/Safari\//.test(ua) && /Version\//.test(ua)) browser = 'Safari';
+
+    const w = (window.screen && window.screen.width) || window.innerWidth;
+    const h = (window.screen && window.screen.height) || window.innerHeight;
+
+    return [
+      `Device: ${type}`,
+      `OS: ${os}`,
+      `Browser: ${browser}`,
+      `Screen: ${w}×${h}`,
+      `Touch: ${isTouch ? 'Yes' : 'No'}`
+    ];
+  }
+
   function topbar(title, extraButtons, opts) {
     const bar = el('div', 'topbar');
-    bar.appendChild(el('h1', 'badge-fit', HEADER_ICON + title));
-    const nav = el('div', 'nav');
+    let homeBtn = null;
     if (!opts || opts.hideHome !== true) {
-      const homeBtn = el('button', 'icon-btn home-btn', HOME_ICON);
+      homeBtn = el('button', 'icon-btn home-btn', HOME_ICON);
       homeBtn.type = 'button';
       homeBtn.setAttribute('aria-label', 'Home');
       homeBtn.title = 'Home';
       homeBtn.addEventListener('click', () => SBS.go({ screen: 'home' }));
-      nav.appendChild(homeBtn);
     }
+    if (homeBtn && opts && opts.homeLeft) bar.appendChild(homeBtn);
+    const h1Cls = 'badge-fit' + (opts && opts.pill ? ' brand-pill' : '');
+    const h1 = el('h1', h1Cls, (opts && opts.hideIcon ? '' : HEADER_ICON) + title);
+    const infoLines = detectDeviceInfo();
+    h1.title = infoLines.join('\n');
+    // Hover tooltips don't work on touch devices (phone/iPad) or TV
+    // remotes, so tapping/clicking the icon also surfaces the same info
+    // through the existing cross-device modal.
+    h1.style.cursor = 'pointer';
+    h1.addEventListener('click', () => showAlert(infoLines.map(escapeHtml).join('<br>')));
+    bar.appendChild(h1);
+    const nav = el('div', 'nav');
+    if (homeBtn && !(opts && opts.homeLeft)) nav.appendChild(homeBtn);
     (extraButtons || []).forEach(btn => nav.appendChild(btn));
     bar.appendChild(nav);
     return bar;
@@ -107,28 +191,85 @@
     return { setup: 'Setup', picking: 'Picking Squares', started: 'In Progress', finished: 'Finished' }[s] || s;
   }
 
-  function currentDefaultYear() {
-    const now = new Date();
-    // Super Bowl happens in Feb; the "season year" people use is usually the year of the game itself.
-    return now.getMonth() >= 6 ? now.getFullYear() + 1 : now.getFullYear();
+  const LEAGUE_LABELS = { nfl: 'NFL', nba: 'NBA', other: 'Other' };
+  function leagueLabel(league) { return LEAGUE_LABELS[league] || 'Other'; }
+
+  // League-level (not team-level) logos, from the same ESPN CDN as the team
+  // logos above. 'other' has no logo at all — its badge is just the word.
+  const LEAGUE_LOGO_URL = {
+    nfl: 'https://a.espncdn.com/i/teamlogos/leagues/500/nfl.png',
+    nba: 'https://a.espncdn.com/i/teamlogos/leagues/500/nba.png'
+  };
+
+  function leagueBadge(league) {
+    const cls = `league-badge league-${league || 'other'}`;
+    const label = leagueLabel(league);
+    const logo = LEAGUE_LOGO_URL[league];
+    if (!logo) return `<span class="${cls}">${label}</span>`;
+    // If the CDN logo 404s, hide it and reveal the text fallback that's
+    // already sitting there — same "never show a broken image" rule the
+    // team logos follow, just swapping visibility instead of swapping src.
+    return `<span class="${cls}" title="${label}">`
+      + `<img src="${logo}" class="league-badge-logo" alt="${label}" onerror="this.style.display='none';this.nextElementSibling.style.display='inline';">`
+      + `<span class="league-badge-text" style="display:none;">${label}</span>`
+      + `</span>`;
   }
 
-  // ---------- Team colours / logos (auto-detected from free-text team names) ----------
+  // ---------- Team colours / logos ----------
+  // NFL/NBA colors are auto-detected from free-text team names; 'other' has no
+  // team database at all, so its colors always come from the host's own
+  // color-picker choice on the game (teamAColor/teamBColor).
   const DEFAULT_COLORS = { teamA: '#ff6b6b', teamAAlt: '#ffb3b3', teamB: '#4dabf7', teamBAlt: '#a5d8ff' };
 
-  function teamMeta(name) {
-    return (window.TeamData && window.TeamData.findTeamMeta(name)) || null;
+  function teamMeta(name, league) {
+    return (window.TeamData && window.TeamData.findTeamMeta(name, league)) || null;
+  }
+
+  // Darkens (negative percent) or lightens (positive) a hex color — used to
+  // invent a plausible "secondary" shade for a custom 'other'-league color,
+  // since the host only picks one color per team.
+  function shadeColor(hex, percent) {
+    const n = parseInt(String(hex || '').replace('#', ''), 16);
+    if (isNaN(n)) return hex;
+    const clamp = v => Math.max(0, Math.min(255, v));
+    const amt = Math.round(2.55 * percent);
+    const r = clamp(((n >> 16) & 255) + amt);
+    const g = clamp(((n >> 8) & 255) + amt);
+    const b = clamp((n & 255) + amt);
+    return '#' + (0x1000000 + r * 0x10000 + g * 0x100 + b).toString(16).slice(1);
+  }
+
+  // Resolves everything needed to render one side ('A' or 'B') of a game's
+  // matchup: brand color pair, font, abbreviation, and whether a real team
+  // was actually matched (vs. falling back to defaults).
+  function teamStyle(game, side) {
+    const name = side === 'A' ? game.teamA : game.teamB;
+    const league = game && game.league;
+    if (league === 'other') {
+      const custom = side === 'A' ? game.teamAColor : game.teamBColor;
+      const primary = custom || (side === 'B' ? DEFAULT_COLORS.teamB : DEFAULT_COLORS.teamA);
+      return { primary, secondary: shadeColor(primary, -22), font: null, abbr: teamAbbr(name, null), matched: false, league };
+    }
+    const meta = teamMeta(name, league);
+    if (meta) {
+      return { primary: meta.primary, secondary: meta.secondary, font: meta.font, abbr: meta.abbr.toUpperCase(), matched: true, league, meta };
+    }
+    return {
+      primary: side === 'B' ? DEFAULT_COLORS.teamB : DEFAULT_COLORS.teamA,
+      secondary: side === 'B' ? DEFAULT_COLORS.teamBAlt : DEFAULT_COLORS.teamAAlt,
+      font: null, abbr: teamAbbr(name, null), matched: false, league
+    };
   }
 
   function applyTeamColors(game) {
     const root = document.documentElement;
-    const metaA = teamMeta(game.teamA);
-    const metaB = teamMeta(game.teamB);
-    root.style.setProperty('--teamA', metaA ? metaA.primary : DEFAULT_COLORS.teamA);
-    root.style.setProperty('--teamA-alt', metaA ? metaA.secondary : DEFAULT_COLORS.teamAAlt);
-    root.style.setProperty('--teamB', metaB ? metaB.primary : DEFAULT_COLORS.teamB);
-    root.style.setProperty('--teamB-alt', metaB ? metaB.secondary : DEFAULT_COLORS.teamBAlt);
-    return { metaA, metaB };
+    const a = teamStyle(game, 'A');
+    const b = teamStyle(game, 'B');
+    root.style.setProperty('--teamA', a.primary);
+    root.style.setProperty('--teamA-alt', a.secondary);
+    root.style.setProperty('--teamB', b.primary);
+    root.style.setProperty('--teamB-alt', b.secondary);
+    return { styleA: a, styleB: b };
   }
 
   function resetTeamColors() {
@@ -146,16 +287,18 @@
 
   // Logos come from ESPN's CDN at runtime; the helmet is the offline fallback
   // so the TV layout never shows a broken image — and also what renders for a
-  // free-text team name that doesn't match a real NFL team, so a logo icon is
-  // always present rather than sometimes missing.
-  function teamLogoTag(name, size) {
-    const meta = teamMeta(name);
+  // free-text team name that doesn't match a real team (or for the 'other'
+  // league, which has no logos at all), so a logo icon is always present
+  // rather than sometimes missing.
+  function teamLogoTag(game, side, size) {
+    const style = teamStyle(game, side);
     const s = size || 28;
-    if (!meta || !window.TeamData) {
+    if (!style.matched || !window.TeamData) {
       return `<img src="${HELMET_DATA_URI}" class="team-logo" style="--logo-size:${s}px;" alt="">`;
     }
-    const url = window.TeamData.logoUrl(meta);
-    return `<img src="${url}" class="team-logo" style="--logo-size:${s}px;" onerror="this.onerror=null;this.src='${HELMET_DATA_URI}';" alt="${escapeHtml(meta.names[0])}">`;
+    const url = window.TeamData.logoUrl(style.meta, style.league);
+    const name = side === 'A' ? game.teamA : game.teamB;
+    return `<img src="${url}" class="team-logo" style="--logo-size:${s}px;" onerror="this.onerror=null;this.src='${HELMET_DATA_URI}';" alt="${escapeHtml(name)}">`;
   }
 
   // ---------- Team badge (colored pill: team color as background, logo, and
@@ -178,14 +321,11 @@
     return contrastWhite >= contrastBlack ? '#f4f7fa' : '#12181f';
   }
 
-  // `side` ('A' or 'B') only matters as a fallback when the name doesn't
-  // match a real NFL team, to pick which of the two default colors to use.
-  function teamColor(name, side) {
-    const meta = teamMeta(name);
-    return meta ? meta.primary : (side === 'B' ? DEFAULT_COLORS.teamB : DEFAULT_COLORS.teamA);
+  function teamColor(game, side) {
+    return teamStyle(game, side).primary;
   }
 
-  // A short fallback for team names that don't match a known NFL team (so
+  // A short fallback for team names that don't match a known team (so
   // free-text entries still get something reasonable in the abbreviated view).
   function teamAbbr(name, meta) {
     if (meta) return meta.abbr.toUpperCase();
@@ -196,16 +336,16 @@
 
   // Renders full name and abbreviation together; fitTeamBadges() below picks
   // which one is visible (and whether the logo shows) based on available space.
-  function teamBadge(name, side, opts) {
+  function teamBadge(game, side, opts) {
     opts = opts || {};
-    const bg = teamColor(name, side);
+    const name = side === 'A' ? game.teamA : game.teamB;
+    const style = teamStyle(game, side);
+    const bg = style.primary;
     const fg = readableTextColor(bg);
-    const logo = teamLogoTag(name, opts.logoSize || 20);
+    const logo = teamLogoTag(game, side, opts.logoSize || 20);
     const cls = 'team-badge' + (opts.cls ? ' ' + opts.cls : '');
-    const meta = teamMeta(name);
-    const fontStyle = meta && meta.font ? ` font-family:${meta.font}, var(--sans);` : '';
-    const abbr = teamAbbr(name, meta);
-    return `<span class="${cls}" style="background:${bg}; color:${fg};">${logo}<span class="team-badge-name" style="${fontStyle}"><span class="badge-full">${escapeHtml(name)}</span><span class="badge-abbr">${escapeHtml(abbr)}</span></span></span>`;
+    const fontStyle = style.font ? ` font-family:${style.font}, var(--sans);` : '';
+    return `<span class="${cls}" style="background:${bg}; color:${fg};">${logo}<span class="team-badge-name" style="${fontStyle}"><span class="badge-full">${escapeHtml(name)}</span><span class="badge-abbr">${escapeHtml(style.abbr)}</span></span></span>`;
   }
 
   // Downgrades team-badge display within each `.badge-fit` container, in
@@ -311,8 +451,9 @@
   SBS.ui = {
     el, escapeHtml, money, overlayEl, fullscreen, keepScreenAwake,
     showModal, showConfirm, showAlert, showChoice,
-    topbar, statusLabel, currentDefaultYear,
-    teamMeta, applyTeamColors, resetTeamColors, teamLogoTag,
-    teamColor, readableTextColor, teamBadge, fitTeamBadges, teamAbbr
+    topbar, statusLabel, leagueLabel, leagueBadge, isTvBrowser, isPhone,
+    teamMeta, teamStyle, applyTeamColors, resetTeamColors, teamLogoTag,
+    teamColor, readableTextColor, teamBadge, fitTeamBadges, teamAbbr, shadeColor,
+    TV_ICON, PHONE_ICON, PEOPLE_ICON
   };
 })();

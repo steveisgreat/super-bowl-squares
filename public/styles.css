@@ -97,8 +97,27 @@ html, body {
 
 .header-icon { color: var(--accent); flex-shrink: 0; }
 
+.topbar h1.brand-pill {
+  padding: 8px 18px;
+  border-radius: 10px;
+  border: 1px solid #2ecc71;
+  background: var(--chrome-bg);
+  animation: brand-pill-glow 2.4s ease-in-out infinite;
+}
+@keyframes brand-pill-glow {
+  0%, 100% { box-shadow: 0 0 0 rgba(46, 204, 113, 0); }
+  50% { box-shadow: 0 0 14px rgba(46, 204, 113, 0.55); }
+}
+
 .vs-sep { color: var(--muted); font-weight: 600; text-transform: lowercase; }
 .header-year { color: var(--muted); font-weight: 500; }
+
+.gameday-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
 
 .topbar .nav {
   display: flex;
@@ -127,6 +146,7 @@ h3 { font-family: var(--serif); font-size: 1.15rem; color: var(--text); font-wei
   padding: 24px;
   margin-bottom: 20px;
 }
+.card h3:first-child { margin-top: 0; }
 
 .grid-cards {
   display: grid;
@@ -134,28 +154,76 @@ h3 { font-family: var(--serif); font-size: 1.15rem; color: var(--text); font-wei
   gap: 16px;
 }
 
-.year-card {
+.game-card {
   position: relative;
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow-card);
-  padding: 20px;
+  padding: 44px 20px 20px;
   cursor: pointer;
   transition: border-color 0.15s ease;
+  text-align: center;
 }
-.year-card:hover { border-color: var(--accent); }
-.year-card .yr { font-family: var(--serif); font-size: 1.8rem; font-weight: 600; color: var(--accent); letter-spacing: -0.01em; }
-.year-card .teams { display: flex; align-items: center; gap: 8px; margin: 8px 0; flex-wrap: wrap; }
-.year-card .status {
+.game-card:hover { border-color: var(--accent); }
+.game-card-meta { display: flex; flex-direction: column; align-items: center; gap: 2px; margin-bottom: 4px; }
+.game-card .game-date {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  font-family: var(--serif);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: -0.01em;
+}
+.game-card-desc { color: var(--muted); font-size: 0.9rem; margin-bottom: 6px; }
+.game-card .teams { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; margin: 8px 0; }
+.game-card .teams > .team-badge { min-width: 0; }
+.game-card .teams > .team-badge:first-child { justify-self: end; }
+.game-card .teams > .team-badge:last-child { justify-self: start; }
+.game-card .teams > .vs-sep { justify-self: center; }
+.game-card .status {
   display: inline-block;
-  padding: 4px 12px;
+  margin-top: 5px;
+  padding: 5px 12px;
   border-radius: 999px;
   font-size: 0.78rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.3px;
 }
+
+.league-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.league-badge.league-other { background: var(--good-soft); color: var(--good); padding: 4px 12px; border-radius: 999px; }
+.league-badge-logo { height: 20px; width: auto; display: block; }
+
+.archive-wrap { margin-top: 4px; }
+.archive-toggle {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-weight: 700;
+  padding: 8px 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.archive-toggle:hover { color: var(--text); }
+.archive-arrow { display: inline-block; transition: transform 0.15s ease; }
+.archive-toggle.open .archive-arrow { transform: rotate(90deg); }
+.archive-panel.collapsed { display: none; }
 /* Shared style for every delete/remove action in the app — muted and
    outlined by default so it doesn't compete for attention next to the
    solid --accent buttons, only turning red to confirm its intent once the
@@ -174,11 +242,59 @@ button.ghost.btn-delete:hover, button.ghost.btn-delete:focus-visible {
   border-color: var(--danger-border);
   background: var(--danger-soft);
 }
-.year-card-delete { position: absolute; top: 12px; right: 12px; }
+.game-card-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 14px; }
+.game-card-actions button.icon-btn { width: 48px; height: 48px; }
+.game-card-actions button.icon-btn svg { width: 24px; height: 24px; }
+button.icon-btn.game-card-delete {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+}
+button.icon-btn.game-card-delete:hover, button.icon-btn.game-card-delete:focus-visible {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
 .status-setup { background: var(--warn-soft); color: var(--warn); }
-.status-picking { background: var(--accent-soft); color: var(--accent-hi); }
-.status-started { background: var(--accent-soft); color: var(--accent-hi); }
+.game-card .status-picking {
+  background: none;
+  padding: 5px 2px;
+  border-radius: 0;
+  color: var(--accent);
+  line-height: 1;
+}
+.status-picking .letter {
+  display: inline-block;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 1px 1px;
+  transition: background-color 0.35s ease, border-color 0.35s ease,
+              box-shadow 0.35s ease, color 0.35s ease;
+  transform: rotate(0deg) scale(1);
+}
+.status-picking .letter.space { width: 4px; }
+.status-picking .letter.wiggling {
+  animation: status-letter-wiggle 1.1s ease-in-out;
+}
+@keyframes status-letter-wiggle {
+  0%   { transform: rotate(0deg) scale(1); }
+  15%  { transform: rotate(-12deg) scale(1.2); }
+  30%  { transform: rotate(12deg) scale(1.2); }
+  45%  { transform: rotate(-9deg) scale(1.15); }
+  60%  { transform: rotate(9deg) scale(1.1); }
+  75%  { transform: rotate(-4deg) scale(1.05); }
+  100% { transform: rotate(0deg) scale(1); }
+}
+.status-started { background: var(--danger-soft); color: var(--danger); animation: status-glow 2.4s ease-in-out infinite; }
 .status-finished { background: var(--good-soft); color: var(--good); }
+@keyframes status-glow {
+  0%, 100% { box-shadow: 0 0 0 0 currentColor; }
+  50% { box-shadow: 0 0 10px 1px currentColor; }
+}
 
 button, .btn {
   font: inherit;
@@ -233,7 +349,7 @@ button.full-width { width: 100%; text-align: center; }
 button:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
 
 label { display: block; margin: 14px 0 6px; font-weight: 500; color: var(--muted); font-size: 0.85rem; }
-input[type=text], input[type=number], input[type=datetime-local], select {
+input[type=text], input[type=number], input[type=date], input[type=datetime-local], select {
   width: 100%;
   padding: 11px 12px;
   border-radius: var(--radius);
@@ -244,6 +360,16 @@ input[type=text], input[type=number], input[type=datetime-local], select {
   transition: border-color 0.12s ease, box-shadow 0.12s ease;
 }
 input:focus, select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+input[type=color] {
+  width: 100%;
+  height: 44px;
+  padding: 4px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-strong);
+  background: var(--panel);
+  cursor: pointer;
+}
 
 .checkbox-label {
   display: flex;
@@ -314,8 +440,8 @@ input:focus, select:focus { outline: none; border-color: var(--accent); box-shad
 .stat-strip {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 12px;
-  margin-bottom: 18px;
+  gap: 8px;
+  margin-bottom: 10px;
 }
 .stat-box {
   background: var(--panel);
@@ -323,12 +449,12 @@ input:focus, select:focus { outline: none; border-color: var(--accent); box-shad
   border-left: 3px solid var(--accent);
   border-radius: var(--radius);
   box-shadow: var(--shadow-card);
-  padding: 16px 18px;
+  padding: 4px 18px;
   text-align: center;
   transition: border-color 0.12s ease;
 }
-.stat-box .val { font-variant-numeric: tabular-nums; font-size: 1.7rem; font-weight: 700; color: var(--accent); letter-spacing: -0.01em; }
-.stat-box .lbl { font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; margin-top: 2px; }
+.stat-box .val { font-variant-numeric: tabular-nums; font-size: 1.7rem; font-weight: 700; color: var(--accent); letter-spacing: -0.01em; line-height: 1.1; }
+.stat-box .lbl { font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; margin-top: 0; line-height: 1.1; }
 .stat-box.warn { border-left-color: var(--danger); }
 .stat-box.warn .val { color: var(--danger); }
 .stat-box.clickable { cursor: pointer; }
@@ -345,6 +471,10 @@ input:focus, select:focus { outline: none; border-color: var(--accent); box-shad
 }
 .stat-box input.val-input:focus { border-bottom-color: var(--accent); box-shadow: none; }
 .pot-edited-tag { text-transform: none; color: var(--accent-hi); font-weight: 600; }
+
+.pot-input-wrap { display: flex; align-items: baseline; justify-content: center; gap: 2px; }
+.pot-input-wrap .pot-currency { font-size: 1.7rem; font-weight: 700; color: var(--accent); }
+.pot-input-wrap input.val-input { width: auto; max-width: 100px; flex: 0 1 auto; }
 
 .pick-layout {
   display: grid;
@@ -469,6 +599,7 @@ input:focus, select:focus { outline: none; border-color: var(--accent); box-shad
    visible to scrollWidth/clientWidth. Both are no-ops on non-flex-item
    containers that already size correctly. */
 .badge-fit { min-width: 0; overflow: hidden; }
+.brand-dollar { color: #2ecc71; }
 .team-badge .badge-abbr { display: none; }
 .team-badge.mode-abbr .badge-full { display: none; }
 .team-badge.mode-abbr .badge-abbr { display: inline; }
@@ -594,9 +725,9 @@ body.tv-fullscreen .tv-header .live-score-bar { font-size: 1.5rem; }
    no color/shadow treatment, so it doesn't read as an actual drawn number. */
 .cell.head.pending { color: #fff; text-shadow: none; }
 .cell.filled { background: var(--panel2); color: var(--text); cursor: default; }
-.cell.empty-pick { cursor: pointer; color: var(--muted); }
-.cell.empty-pick:hover { background: var(--accent-soft); }
-.cell.selected { background: var(--accent); color: var(--on-accent); }
+.cell.empty-pick { cursor: pointer; color: var(--muted); transition: box-shadow 0.12s ease, background 0.12s ease; }
+.cell.empty-pick:hover { box-shadow: inset 0 0 0 2px var(--pick-color, var(--accent2)), 0 0 8px var(--pick-color, var(--accent2)); }
+.cell.selected, .cell.empty-pick.selected:hover { background: var(--pick-color, var(--accent2)); color: var(--on-accent); box-shadow: none; }
 .cell.pushed { background: rgba(51, 18, 15, 0.75); color: var(--danger); }
 /* Certificate frame: a hairline gold rule, a sliver of the cell's own
    background, then a soft gold band — reads as "this square was awarded
@@ -641,6 +772,51 @@ body.tv-fullscreen .tv-header .live-score-bar { font-size: 1.5rem; }
     inset 0 0 0 5px rgba(244, 197, 66, 0.45);
   outline: 2px solid rgba(239, 68, 68, 0.7);
   outline-offset: -1px;
+}
+
+/* TV-only "where the game is heading" overlay (see compute.js
+   computeLiveHighlight): a radar-ping ring on a pseudo-element, so it never
+   fights the .winner cell's own inset gold frame or badges for the
+   box-shadow/innerHTML a cell already has from an earlier quarter. Needs
+   overflow visible + a raised z-index so the ping can bloom past the cell's
+   own edge instead of being clipped by it. */
+.cell.live-winner,
+.cell.live-near {
+  overflow: visible;
+  z-index: 2;
+}
+.cell.live-winner::after,
+.cell.live-near::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 4px;
+  pointer-events: none;
+}
+.cell.live-winner::after { animation: tv-live-ping-winner 2.4s ease-out infinite; }
+.cell.live-near::after { animation: tv-live-ping-near 3.2s ease-out infinite; }
+.cell.live-winner .name-txt { animation: tv-live-winner-font 2.4s ease-in-out infinite; }
+
+@keyframes tv-live-ping-winner {
+  0% { box-shadow: inset 0 0 0 1px var(--danger), 0 0 0 0 rgba(239, 68, 68, 0.55); }
+  70% { box-shadow: inset 0 0 0 1px var(--danger), 0 0 0 10px rgba(239, 68, 68, 0); }
+  100% { box-shadow: inset 0 0 0 1px var(--danger), 0 0 0 10px rgba(239, 68, 68, 0); }
+}
+@keyframes tv-live-ping-near {
+  0% { box-shadow: inset 0 0 0 1px rgba(141, 189, 232, 0.55), 0 0 0 0 rgba(141, 189, 232, 0.4); }
+  70% { box-shadow: inset 0 0 0 1px rgba(141, 189, 232, 0.55), 0 0 0 7px rgba(141, 189, 232, 0); }
+  100% { box-shadow: inset 0 0 0 1px rgba(141, 189, 232, 0.55), 0 0 0 7px rgba(141, 189, 232, 0); }
+}
+@keyframes tv-live-winner-font {
+  0%, 100% { font-size: 0.78rem; }
+  45% { font-size: 1.05rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cell.live-winner::after,
+  .cell.live-near::after,
+  .cell.live-winner .name-txt {
+    animation: none;
+  }
 }
 
 .board-legend {
@@ -705,6 +881,8 @@ body.tv-fullscreen .tv-header .live-score-bar { font-size: 1.5rem; }
 .outcome.win { color: var(--good); }
 .outcome.push { color: var(--danger); }
 .outcome.pending { color: var(--muted); font-weight: 500; }
+.outcome.outcome-needs-draw { text-align: center; }
+.qcard-actions-center { display: flex; justify-content: center; }
 
 .legend-team {
   display: inline-flex;
@@ -723,6 +901,9 @@ body.tv-fullscreen .tv-header .live-score-bar { font-size: 1.5rem; }
 }
 
 .hidden { display: none !important; }
+
+.games-picker label { margin-top: 0; }
+.games-picker-msg { color: var(--muted); font-size: 0.9rem; margin: 10px 0 0; }
 
 @media (min-width: 1400px) {
   .cell { min-height: 78px; font-size: 0.95rem; }
@@ -785,6 +966,37 @@ body.tv-fullscreen .tv-header .live-score-bar { font-size: 1.5rem; }
   font-size: 1.3rem;
   font-weight: 700;
   color: var(--accent);
+}
+.tv-picking-info {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 0;
+}
+.tv-picking-line {
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  gap: 22px;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--accent);
+  text-align: center;
+}
+.tv-picking-val {
+  color: var(--good);
+}
+.tv-picking-val-warn {
+  color: var(--danger);
+}
+.tv-picking-pill {
+  padding: 10px 28px;
+  border-radius: 999px;
+  border: 1px solid #2ecc71;
+  background: var(--chrome-bg);
+  animation: brand-pill-glow 2.4s ease-in-out infinite;
 }
 /* Controls sit over the grid and fade out after a few idle seconds so the
    television shows nothing but the board. Any tap or mouse move revives them. */
@@ -860,6 +1072,390 @@ body.tv-fullscreen .tv-header .live-score-bar { font-size: 1.5rem; }
 .tv-qchip.push .tvq-status { color: var(--warn); font-weight: 700; }
 body.tv-fullscreen .tv-quarters { margin-bottom: 6px; }
 
+/* Quarter-end celebration overlay — plays over the whole TV screen (board
+   included) for a minute whenever a quarter resolves with a winner, however
+   the score got there (live API poll, host typing, or phone entry). */
+.tv-celebration {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  pointer-events: none;
+}
+.tv-celebration-piece {
+  position: absolute;
+  top: -6%;
+  animation-name: tv-cel-money-fall;
+  animation-timing-function: ease-in;
+  animation-fill-mode: forwards;
+}
+@keyframes tv-cel-money-fall {
+  0% { transform: translate(0, 0) rotate(var(--rot)); opacity: 0; }
+  8% { opacity: 1; }
+  100% { transform: translate(var(--drift), 115vh) rotate(calc(var(--rot) + var(--spin))); opacity: 0; }
+}
+.tv-celebration-card {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  background: rgba(7, 10, 13, 0.88);
+  border: 1px solid #c3c6c8;
+  border-radius: 20px;
+  padding: 20px 44px 30px;
+  animation: tv-cel-pop-in 0.5s ease-out;
+}
+@keyframes tv-cel-pop-in {
+  0% { transform: scale(0.6); opacity: 0; }
+  70% { transform: scale(1.05); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.tv-celebration-trophy {
+  position: relative;
+  display: inline-block;
+  width: 80px;
+  height: 125px;
+  animation: tv-cel-trophy-bob 2.4s ease-in-out infinite;
+}
+.tv-celebration-trophy svg { width: 100%; height: 100%; }
+@keyframes tv-cel-trophy-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+.tv-celebration-sparkle {
+  position: absolute;
+  color: #f4f6f7;
+  line-height: 1;
+  text-shadow: 0 0 6px rgb(255 255 255 / 90%);
+  animation-name: tv-cel-sparkle;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+@keyframes tv-cel-sparkle {
+  0%, 100% { opacity: 0; transform: scale(0.3) rotate(0deg); }
+  50% { opacity: 1; transform: scale(1) rotate(25deg); }
+}
+.tv-celebration-quarter {
+  color: #c3c6c8;
+  font-size: 1.1rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+.tv-celebration-name {
+  color: var(--text);
+  font-size: 2.6rem;
+  font-weight: 800;
+  margin: 6px 0;
+}
+.tv-celebration-amount {
+  color: var(--good);
+  font-size: 1.8rem;
+  font-weight: 800;
+}
+
+/* TV-only notice while the Final score is in but its winning square is
+   empty — stays up for as long as `needsDraw` is true and disappears the
+   instant the host runs "Randomly Draw Winner" (which flips needsDraw false
+   and hands off to the countdown/spin reveal below). Translucent so the grid
+   stays visible underneath, unlike the reveal overlay. */
+.tv-needsdraw-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 45;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 7, 10, 0.72);
+  pointer-events: none;
+  padding: 20px;
+}
+.tv-needsdraw-card {
+  text-align: center;
+  background: rgba(10, 13, 16, 0.9);
+  border: 1px solid rgba(244, 197, 66, 0.4);
+  border-radius: 20px;
+  padding: 26px 46px;
+  animation: tv-cel-pop-in 0.5s ease-out;
+  max-width: 560px;
+}
+.tv-needsdraw-icon { font-size: 2.4rem; margin-bottom: 6px; }
+.tv-needsdraw-title {
+  font-size: clamp(1.6rem, 3.4vw, 2.4rem);
+  font-weight: 900;
+  color: #f4c542;
+  letter-spacing: 0.02em;
+  margin-bottom: 8px;
+}
+.tv-needsdraw-body {
+  font-size: clamp(1rem, 1.8vw, 1.3rem);
+  color: #d7dade;
+}
+
+/* "Randomly Draw Winner" reveal — a countdown then a two-wheel slot-machine
+   spin, shown full-screen on whichever window(s) notice the draw (the board
+   that triggered it, and/or the TV grid on its next poll). Opaque so nothing
+   about the already-resolved winner underneath leaks through mid-sequence,
+   and above every other overlay (including the TV celebration) since only
+   one of these ever needs to be on screen at a time. */
+.draw-reveal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #05070a;
+  padding: 20px;
+}
+.draw-reveal-card {
+  text-align: center;
+  color: #f4f6f7;
+}
+.draw-reveal-label {
+  font-size: clamp(1rem, 2.2vw, 1.4rem);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #9aa0a6;
+  margin-bottom: 10px;
+}
+.draw-countdown-num {
+  font-size: clamp(7rem, 24vw, 15rem);
+  font-weight: 900;
+  line-height: 1;
+  color: #f4c542;
+  text-shadow: 0 0 50px rgba(244, 197, 66, 0.55);
+  animation: draw-countdown-pop 1s ease-out;
+}
+@keyframes draw-countdown-pop {
+  0% { transform: scale(0.4); opacity: 0; }
+  60% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); }
+}
+.draw-wheels {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(16px, 4vw, 36px);
+  margin-top: 10px;
+}
+.draw-wheel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.draw-wheel-num {
+  width: clamp(90px, 16vw, 170px);
+  height: clamp(120px, 22vw, 220px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(4rem, 12vw, 8.5rem);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  border-radius: 16px;
+  /* Tinted per-team via --wheel-primary/--wheel-secondary set inline on each
+     reel (see playDrawReveal in screen-gameday.js) — the two team colors
+     bracket the gradient so the reel reads as that team's the whole time
+     it's spinning, with a dark band through the middle so digits stay legible. */
+  background: linear-gradient(160deg, var(--wheel-secondary, #1a1d20), #0c0e10 55%, var(--wheel-secondary, #1a1d20));
+  border: 4px solid var(--wheel-primary, #6b7076);
+  box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.6), 0 8px 24px rgba(0, 0, 0, 0.5);
+  color: #f4f6f7;
+}
+.draw-wheel-num.spinning { animation: draw-wheel-blur 0.12s linear infinite; filter: blur(1.5px); }
+@keyframes draw-wheel-blur {
+  0% { transform: translateY(-6px); }
+  50% { transform: translateY(6px); }
+  100% { transform: translateY(-6px); }
+}
+.draw-wheel-num.landed {
+  animation: draw-wheel-land 0.4s ease-out;
+  filter: none;
+  border-color: var(--wheel-primary, #f4c542);
+  box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.6), 0 0 6px var(--wheel-primary, #f4c542), 0 0 30px var(--wheel-primary, #f4c542);
+}
+@keyframes draw-wheel-land {
+  0% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+.draw-wheel-sep { font-size: clamp(2rem, 6vw, 4rem); color: #6b7076; font-weight: 800; }
+.draw-reveal-nums {
+  font-size: clamp(3rem, 8vw, 5.5rem);
+  font-weight: 900;
+  color: #f4c542;
+  margin: 8px 0;
+}
+.draw-reveal-name {
+  font-size: clamp(1.6rem, 4vw, 2.6rem);
+  font-weight: 800;
+}
+@media (prefers-reduced-motion: reduce) {
+  .draw-countdown-num { animation: none; }
+  .draw-wheel-num.spinning { animation: none; filter: none; }
+  .draw-wheel-num.landed { animation: none; }
+}
+
+/* Game-end summary — replaces the board entirely once the Final celebration
+   card closes, and stays up (unlike the celebration) until the host exits
+   the TV view. Sits one layer below the celebration z-index since the two
+   never actually overlap in time. */
+.tv-final-summary {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: clamp(14px, 3vw, 34px) clamp(14px, 4vw, 40px);
+  overflow: hidden;
+  background: radial-gradient(ellipse at 50% -10%, var(--panel) 0%, var(--bg) 60%);
+  pointer-events: none;
+}
+.tvfs-head {
+  flex: 0 0 auto;
+  text-align: center;
+  position: relative;
+  z-index: 2;
+  margin-bottom: clamp(6px, 1vw, 10px);
+}
+.tvfs-champion-trophy {
+  position: relative;
+  width: clamp(46px, 6vw, 64px);
+  height: clamp(72px, 9.5vw, 98px);
+  margin: 0 auto 6px;
+  animation: tv-cel-trophy-bob 2.6s ease-in-out infinite;
+}
+.tvfs-champion-trophy svg { width: 100%; height: 100%; position: relative; }
+.tvfs-eyebrow {
+  font-size: clamp(0.65rem, 1.1vw, 0.78rem);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold, #f4c542);
+  font-weight: 800;
+  margin-bottom: 6px;
+}
+.tvfs-score {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+.tvfs-score-digits {
+  font-size: clamp(1.3rem, 3vw, 2rem);
+  font-weight: 800;
+  color: var(--text);
+}
+.tvfs-sub {
+  color: var(--muted);
+  font-size: clamp(0.78rem, 1.4vw, 0.95rem);
+}
+.tvfs-pot { color: #f4c542; font-weight: 700; }
+
+.tvfs-board {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 760px;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(6px, 1.1vw, 10px);
+  flex: 1 1 auto;
+  justify-content: flex-start;
+  margin-top: clamp(4px, 1vw, 12px);
+  min-height: 0;
+  overflow-y: auto;
+}
+/* Every row is the same fixed size no matter how many quarters a player
+   won — a 1-quarter winner's row just carries more empty space than a
+   4-quarter winner's, rather than the list looking uneven. */
+.tvfs-row {
+  display: grid;
+  grid-template-columns: clamp(34px, 5vw, 46px) 1fr auto;
+  align-items: center;
+  gap: clamp(10px, 2vw, 18px);
+  min-height: clamp(64px, 9vw, 92px);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0 clamp(12px, 2vw, 20px);
+}
+.tvfs-row.rank-1 {
+  background: linear-gradient(135deg, rgba(244, 197, 66, 0.16), var(--panel) 55%);
+  border-color: rgba(244, 197, 66, 0.55);
+  box-shadow: 0 0 0 1px rgba(244, 197, 66, 0.2);
+}
+.tvfs-row.rank-2 { border-color: rgba(207, 210, 212, 0.35); }
+.tvfs-row.rank-3 { border-color: rgba(208, 138, 85, 0.4); }
+
+.tvfs-rank {
+  font-family: var(--serif);
+  font-weight: 700;
+  font-size: clamp(1.1rem, 2.2vw, 1.55rem);
+  color: var(--muted);
+  text-align: center;
+}
+.tvfs-row.rank-1 .tvfs-rank { color: #f4c542; }
+.tvfs-row.rank-2 .tvfs-rank { color: #cfd2d4; }
+.tvfs-row.rank-3 .tvfs-rank { color: #d08a55; }
+
+.tvfs-main { min-width: 0; }
+.tvfs-name {
+  font-weight: 700;
+  font-size: clamp(0.92rem, 1.8vw, 1.18rem);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tvfs-row.rank-1 .tvfs-name { color: #fff; }
+
+.tvfs-trophies {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+.tvfs-qtrophy {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(244, 197, 66, 0.12);
+  border: 1px solid rgba(244, 197, 66, 0.35);
+  border-radius: 20px;
+  padding: 2px 8px 2px 6px;
+  font-size: clamp(0.6rem, 1.1vw, 0.7rem);
+  font-weight: 800;
+  color: #f4c542;
+  letter-spacing: 0.02em;
+}
+.tvfs-qtrophy svg { display: block; }
+.tvfs-drawn { font-weight: 700; opacity: 0.75; }
+
+.tvfs-amount {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.tvfs-amount-val {
+  font-weight: 800;
+  font-size: clamp(1rem, 2.1vw, 1.5rem);
+  color: var(--text);
+}
+.tvfs-row.rank-1 .tvfs-amount-val { color: #f4c542; }
+.tvfs-amount-lbl {
+  font-size: 0.62rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tvfs-champion-trophy, .tvfs-champion-trophy .tv-celebration-sparkle { animation: none; }
+}
+
 /* Real fullscreen: reclaim the padding so the grid runs edge to edge, and give
    the board the room the header was using. */
 body.tv-fullscreen .tv-screen { padding: 10px 14px 14px; }
@@ -921,6 +1517,24 @@ body.tv-fullscreen .tv-meta { font-size: 1.5rem; }
 .manage-modal-head h3 { margin: 0; color: var(--text); font-family: var(--serif); font-size: 1.25rem; }
 .modal-close { padding: 8px 12px; border-radius: var(--radius); }
 
+/* --- Game Details (raw API response) modal --- */
+.details-modal { max-width: 720px; }
+.details-json {
+  margin: 0;
+  max-height: 60vh;
+  overflow: auto;
+  background: var(--panel2, #1a222b);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .player-list {
   display: flex;
   flex-direction: column;
@@ -942,6 +1556,10 @@ body.tv-fullscreen .tv-meta { font-size: 1.5rem; }
 .player-info { flex: 1 1 140px; min-width: 120px; }
 .player-name { font-weight: 700; font-size: 1.05rem; }
 .player-sub { color: var(--muted); font-size: 0.85rem; margin-top: 2px; }
+.player-name-row { display: flex; align-items: center; gap: 6px; }
+.player-name-row .icon-btn { width: 26px; height: 26px; border-radius: 6px; }
+.player-name-row .icon-btn svg { width: 14px; height: 14px; }
+.player-name-input { width: 120px; padding: 4px 8px; font-size: 0.95rem; }
 
 .paid-toggle {
   display: flex;
@@ -1150,3 +1768,207 @@ body.phone-mode #app { padding: 0; }
   text-align: center;
   max-width: 100%;
 }
+
+/* --- Player companion view (#player-YYYY) ---------------------------------
+   Read-only screen a grid player lands on after scanning the QR code: their
+   squares and quarter winners so far. Sized and spaced for readability at a
+   glance — this is meant to be legible on a phone held at arm's length by
+   someone who isn't going to squint at 12px text, so sizes here run larger
+   and looser than the rest of the app. */
+body.player-mode { background: var(--bg); }
+body.player-mode #app { padding: 0; }
+
+.player-screen {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 16px 16px calc(28px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  line-height: 1.5;
+}
+
+.player-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--bg);
+  padding: 12px 2px 10px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.player-title-row { display: flex; align-items: center; gap: 12px; }
+.player-title { font-size: 1.6rem; font-weight: 800; flex: 1; line-height: 1.25; }
+.player-qr-btn { flex-shrink: 0; width: 44px; height: 44px; }
+
+.player-ticker {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 14px;
+}
+.pt-team { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1; }
+.pt-pts { font-size: 2.1rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.pt-mid { text-align: center; padding: 0 10px; border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
+.pt-status { font-size: 1rem; font-weight: 700; color: var(--danger); text-transform: uppercase; letter-spacing: 0.4px; }
+/* Same glowing pill treatment as the Home screen's game-card "In Progress"
+   badge (see .status-started / @keyframes status-glow), reused here since
+   this element sits outside a .game-card. */
+.pt-status.is-live {
+  display: inline-block;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--danger-soft);
+  animation: status-glow 2.4s ease-in-out infinite;
+}
+.player-ticker-pending {
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  color: var(--muted);
+  font-size: 1.1rem;
+  text-align: center;
+}
+
+.player-select-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.player-select-label { margin: 0; color: var(--muted); font-size: 1rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; }
+.player-select {
+  flex: 1;
+  min-width: 160px;
+  min-height: 52px;
+  background: var(--panel2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+.player-select-empty { color: var(--muted); font-size: 1.1rem; }
+
+.player-card { padding: 18px; }
+.player-card-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; gap: 10px; flex-wrap: wrap; }
+.player-card-title { font-size: 1.05rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+.player-card-sub { font-size: 1.05rem; color: var(--accent); font-weight: 600; }
+.player-muted { color: var(--muted); font-size: 1.2rem; margin: 0; }
+
+.player-total-card { padding: 12px 18px; text-align: center; }
+.player-total-label { font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); margin-bottom: 4px; }
+.player-total-value { font-size: 1.4rem; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; line-height: 1.1; }
+.player-total-value.has-winnings {
+  position: relative;
+  display: inline-block;
+  color: var(--good);
+}
+/* A couple of twinkling ✦ marks flanking the amount — just enough sparkle to
+   catch the eye without turning the number into a distraction. */
+.player-total-value.has-winnings::before,
+.player-total-value.has-winnings::after {
+  content: '✦';
+  position: absolute;
+  color: var(--good);
+  font-size: 0.85rem;
+  animation: total-won-sparkle 1.6s ease-in-out infinite;
+}
+.player-total-value.has-winnings::before { left: -20px; top: -2px; animation-delay: 0s; }
+.player-total-value.has-winnings::after { right: -20px; bottom: -2px; animation-delay: 0.8s; }
+@keyframes total-won-sparkle {
+  0%, 100% { opacity: 0; transform: scale(0.4) rotate(0deg); }
+  50% { opacity: 1; transform: scale(1.15) rotate(20deg); }
+}
+
+.player-square-list { display: flex; flex-direction: column; gap: 10px; }
+.player-square-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.psi-coord { font-weight: 800; font-size: 1.4rem; color: var(--text); }
+.psi-desc { font-size: 1.05rem; color: var(--muted); margin-top: 4px; }
+.psi-tag { font-size: 0.92rem; font-weight: 700; padding: 6px 12px; border-radius: 6px; text-transform: uppercase; white-space: nowrap; }
+.status-winning { background: var(--good-soft); color: var(--good); }
+.status-threat { background: var(--warn-soft); color: var(--warn); }
+.status-dormant { background: var(--panel3); color: var(--muted); }
+
+/* "TM1 # | # TM2" coordinate readout — team abbreviations stay the default
+   text color; the two digits (the actual score that matters) get the accent
+   color so they're the part that jumps out. */
+.coord-team { color: inherit; }
+.coord-num { color: var(--accent); }
+.coord-sep { color: var(--muted); font-weight: 400; margin: 0 4px; }
+
+.player-pills { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; }
+.player-pill {
+  position: relative;
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  padding: 9px 13px;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+/* First column reads left-to-right as normal; the second column is right
+   justified so the two columns form a tidy inner edge down the middle. */
+.player-pills .player-pill:nth-child(odd) { text-align: left; }
+.player-pills .player-pill:nth-child(even) { text-align: right; }
+.player-pill.is-live { border-color: var(--good); background: var(--good-soft); color: var(--good); }
+.player-pill.is-threat { border-color: var(--warn); background: var(--warn-soft); color: var(--warn); }
+
+/* Absolutely positioned so it overlays the pill's corner instead of sitting
+   inline — it must never add width/height to the pill itself, or the grid's
+   row heights and column alignment would drift depending on who has a badge. */
+.pill-win-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--good);
+  color: var(--on-accent);
+  border: 2px solid var(--panel);
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  line-height: 1;
+}
+.player-pill.is-live .coord-num { color: var(--good); }
+.player-pill.is-threat .coord-num { color: var(--warn); }
+
+.player-history { display: flex; flex-direction: column; }
+.player-history-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 1.15rem;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.player-history-row:last-child { border-bottom: none; padding-bottom: 0; }
+.ph-q { font-weight: 700; color: var(--muted); min-width: 50px; }
+.ph-score { font-size: 1.05rem; background: var(--panel2); padding: 4px 9px; border-radius: 4px; color: var(--accent); font-variant-numeric: tabular-nums; }
+.ph-winner { flex: 1; text-align: right; font-weight: 600; }
+.ph-winner.ph-mine { color: var(--good); font-weight: 800; }
+.ph-winner.ph-pending { color: var(--muted); font-weight: 500; }
+.ph-drawn { font-weight: 500; opacity: 0.75; font-size: 0.85em; }

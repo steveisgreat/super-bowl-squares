@@ -9,7 +9,7 @@ const path = require('path');
 const GameLogic = require('./public/compute.js');
 const TeamData = require('./public/teams.js');
 
-const SCOREBOARD_URL = 'https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard';
+const SCOREBOARD_BASE = 'https://site.api.espn.com/apis/site/v2/sports';
 // The base tick is fast so a simulated game's 2-minute quarters visibly tick
 // down; a real ESPN lookup only actually fires every Nth tick so we're not
 // hammering an unofficial endpoint every 5 seconds.
@@ -20,11 +20,21 @@ const FETCH_TIMEOUT_MS = 8000;
 function pad2(n) { return String(n).padStart(2, '0'); }
 function dateStr(d) { return `${d.getFullYear()}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}`; }
 
-async function fetchScoreboard(dates) {
+// 'other' (a custom, non-ESPN-tracked matchup) has no scoreboard endpoint at
+// all — every ESPN-backed lookup below short-circuits to null/[] for it.
+function scoreboardUrl(league) {
+  const sport = TeamData.LEAGUE_SPORT[league];
+  if (!sport) return null;
+  return `${SCOREBOARD_BASE}/${sport}/${league}/scoreboard`;
+}
+
+async function fetchScoreboard(dates, league) {
+  const base = scoreboardUrl(league);
+  if (!base) return null;
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
   try {
-    const res = await fetch(`${SCOREBOARD_URL}?dates=${dates}`, { signal: ctrl.signal });
+    const res = await fetch(`${base}?dates=${dates}`, { signal: ctrl.signal });
     if (!res.ok) return null;
     return await res.json();
   } catch (e) {
@@ -34,24 +44,25 @@ async function fetchScoreboard(dates) {
   }
 }
 
-function abbrOf(name) {
-  const meta = TeamData.findTeamMeta(name);
+function abbrOf(name, league) {
+  const meta = TeamData.findTeamMeta(name, league);
   return meta ? meta.abbr : null;
 }
 
-// Finds the ESPN competition matching both team names. Checks yesterday/
-// today/tomorrow (server-local dates) so a game near midnight is never missed
-// just because the server and ESPN disagree on what "today" is.
-async function findEvent(teamA, teamB) {
-  const abbrA = abbrOf(teamA);
-  const abbrB = abbrOf(teamB);
+// Finds the ESPN competition matching both team names within the given
+// league. Checks yesterday/today/tomorrow (server-local dates) so a game near
+// midnight is never missed just because the server and ESPN disagree on what
+// "today" is.
+async function findEvent(teamA, teamB, league) {
+  const abbrA = abbrOf(teamA, league);
+  const abbrB = abbrOf(teamB, league);
   if (!abbrA || !abbrB) return null;
 
   const now = new Date();
   for (const offset of [0, -1, 1]) {
     const d = new Date(now);
     d.setDate(d.getDate() + offset);
-    const data = await fetchScoreboard(dateStr(d));
+    const data = await fetchScoreboard(dateStr(d), league);
     if (!data || !Array.isArray(data.events)) continue;
     for (const ev of data.events) {
       const comp = ev.competitions && ev.competitions[0];
@@ -119,7 +130,7 @@ function applyLive(game, live, quarterScoreAt) {
 // Mutates `game` in place. Returns true if anything actually changed, so the
 // caller only writes/bumps updatedAt when there's something new to show.
 function applyLiveData(game, comp) {
-  const abbrA = abbrOf(game.teamA);
+  const abbrA = abbrOf(game.teamA, game.league);
   const competitors = comp.competitors || [];
   const compA = competitors.find(c => c.team && c.team.abbreviation && c.team.abbreviation.toLowerCase() === abbrA);
   const compB = competitors.find(c => c && c !== compA);
@@ -163,6 +174,35 @@ function applySimulatedData(game) {
   }));
 }
 
+// Games for a given date (YYYY-MM-DD, defaults to today) in the given league,
+// for the New Game setup screen's "Games" picker. Returns null if ESPN
+// couldn't be reached at all (distinct from a real empty schedule, which
+// returns []) so the caller can tell those two cases apart. 'other' has no
+// ESPN schedule at all, so it always resolves to an empty list.
+async function getTodaysGames(ymd, league) {
+  if (!TeamData.LEAGUE_SPORT[league]) return [];
+  const dates = ymd ? ymd.replace(/-/g, '') : dateStr(new Date());
+  const data = await fetchScoreboard(dates, league);
+  if (!data) return null;
+  if (!Array.isArray(data.events)) return [];
+  return data.events.map(ev => {
+    const comp = ev.competitions && ev.competitions[0];
+    if (!comp) return null;
+    const competitors = comp.competitors || [];
+    const away = competitors.find(c => c.homeAway === 'away');
+    const home = competitors.find(c => c.homeAway === 'home');
+    if (!away || !home) return null;
+    const nameOf = c => (c.team && (c.team.displayName || c.team.name)) || '';
+    const teamA = nameOf(away);
+    const teamB = nameOf(home);
+    if (!teamA || !teamB) return null;
+    // `raw` is ESPN's whole event object for this matchup, unmodified — kept
+    // only so the setup screen's "Details" button can show the host exactly
+    // what the API returned, for troubleshooting a bad match.
+    return { teamA, teamB, raw: ev };
+  }).filter(Boolean);
+}
+
 function startLiveScorePolling(dataDir) {
   let tick = 0;
 
@@ -172,7 +212,7 @@ function startLiveScorePolling(dataDir) {
 
     let files;
     try {
-      files = fs.readdirSync(dataDir).filter(f => /^\d{4}\.json$/.test(f));
+      files = fs.readdirSync(dataDir).filter(f => /^[0-9a-f-]{36}\.json$/i.test(f));
     } catch (e) {
       return;
     }
@@ -195,7 +235,7 @@ function startLiveScorePolling(dataDir) {
       try {
         const changed = game.simulation
           ? applySimulatedData(game)
-          : applyLiveData(game, await findEvent(game.teamA, game.teamB) || {});
+          : applyLiveData(game, await findEvent(game.teamA, game.teamB, game.league) || {});
         if (!changed) continue;
         GameLogic.syncStatus(game);
         game.updatedAt = new Date().toISOString();
@@ -212,4 +252,4 @@ function startLiveScorePolling(dataDir) {
   return setInterval(pollOnce, POLL_MS);
 }
 
-module.exports = { startLiveScorePolling };
+module.exports = { startLiveScorePolling, getTodaysGames };

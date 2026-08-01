@@ -34,9 +34,9 @@
         <span class="live-label">${live.simulation ? 'SIMULATION' : 'LIVE'}</span>
       </span>
       <span class="live-center">
-        ${teamBadge(game.teamA, 'A', { logoSize: 16, cls: 'team-badge-sm' })}
+        ${teamBadge(game, 'A', { logoSize: 16, cls: 'team-badge-sm' })}
         <span class="live-score-digits">${live.a}–${live.b}</span>
-        ${teamBadge(game.teamB, 'B', { logoSize: 16, cls: 'team-badge-sm' })}
+        ${teamBadge(game, 'B', { logoSize: 16, cls: 'team-badge-sm' })}
         <span class="live-period">${escapeHtml(clockTxt)}</span>
       </span>
     `;
@@ -56,8 +56,8 @@
 
   // The axis bars use a gradient that peaks at the team color in the middle
   // and fades to transparent at both ends, rather than a flat fill.
-  function badgeStyle(name, side, axis) {
-    const bg = teamColor(name, side);
+  function badgeStyle(game, side, axis) {
+    const bg = teamColor(game, side);
     const fade = bg + '00';
     const gradientDir = axis === 'x' ? 'to right' : 'to bottom';
     return `background:linear-gradient(${gradientDir}, ${fade}, ${bg}, ${fade}); color:${readableTextColor(bg)};`;
@@ -106,6 +106,7 @@
         }
         const cell = el('div', cls, label);
         if (!sq && state.selecting) {
+          if (state.pickColor) cell.style.setProperty('--pick-color', state.pickColor);
           cell.addEventListener('click', () => state.onToggle(idx));
         }
         table.appendChild(cell);
@@ -116,8 +117,11 @@
     holder.appendChild(scroll);
   }
 
-  // Step 3 / TV board, with axis numbers and per-quarter badges.
-  function renderFullBoard(holder, game, computed) {
+  // Step 3 / TV board, with axis numbers and per-quarter badges. `liveHighlight`
+  // (TV screen only — see compute.js computeLiveHighlight) overlays the
+  // live-projected winner and its near-miss squares on top of whatever
+  // quarter badges a cell already has; it never replaces them.
+  function renderFullBoard(holder, game, computed, liveHighlight) {
     holder.innerHTML = '';
     const isUnpaid = unpaidChecker(game);
 
@@ -129,12 +133,12 @@
     // with the top of the grid's own blank corner cell — not stretched up
     // alongside teamB's bar, which used to leave it starting a row too low.
     const outer = el('div', 'board-grid-outer');
-    const teamALabel = el('div', 'teamA-label', `<span class="teamA-label-text">${escapeHtml(game.teamA)}</span>${teamLogoTag(game.teamA, 32)}`);
-    teamALabel.style.cssText = badgeStyle(game.teamA, 'A', 'y');
+    const teamALabel = el('div', 'teamA-label', `<span class="teamA-label-text">${escapeHtml(game.teamA)}</span>${teamLogoTag(game, 'A', 32)}`);
+    teamALabel.style.cssText = badgeStyle(game, 'A', 'y');
     outer.appendChild(teamALabel);
 
-    const teamBLabel = el('div', 'teamB-label', `${teamLogoTag(game.teamB, 32)}<span>${escapeHtml(game.teamB)}</span>`);
-    teamBLabel.style.cssText = badgeStyle(game.teamB, 'B', 'x');
+    const teamBLabel = el('div', 'teamB-label', `${teamLogoTag(game, 'B', 32)}<span>${escapeHtml(game.teamB)}</span>`);
+    teamBLabel.style.cssText = badgeStyle(game, 'B', 'x');
     outer.appendChild(teamBLabel);
 
     const scroll = el('div', 'board-scroll');
@@ -157,6 +161,12 @@
         if (sq) cls += ' filled';
         if (hasWin) cls += ' winner';
         else if (hasPush) cls += ' pushed';
+
+        if (liveHighlight) {
+          const key = `${r}-${c}`;
+          if (liveHighlight.winnerKey === key) cls += ' live-winner';
+          else if (liveHighlight.nearKeys.has(key)) cls += ' live-near';
+        }
 
         const owing = sq && isUnpaid(sq.name);
         if (owing) cls += ' is-unpaid';

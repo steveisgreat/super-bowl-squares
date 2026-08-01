@@ -11,11 +11,9 @@
   'use strict';
 
   // `font` is a free Google Font chosen to echo each team's real wordmark
-  // style (see NFL_TEAM_FONTS below for the requested style/closest-match
-  // notes) — the actual commercial fonts (Aachen Bold, Bank Gothic, Teko's
-  // paid cousins, etc.) aren't freely licensable, so this is the nearest
-  // free equivalent, reused across teams with a similar look to keep the
-  // number of fonts loaded reasonable.
+  // style — the actual commercial fonts aren't freely licensable, so this is
+  // the nearest free equivalent, reused across teams with a similar look to
+  // keep the number of fonts loaded reasonable.
   const NFL_TEAMS = [
     { names: ['arizona cardinals', 'cardinals', 'arizona'], abbr: 'ari', primary: '#97233F', secondary: '#000000', font: "'Staatliches'" },
     { names: ['atlanta falcons', 'falcons', 'atlanta'], abbr: 'atl', primary: '#A71930', secondary: '#000000', font: "'Staatliches'" },
@@ -51,18 +49,66 @@
     { names: ['washington commanders', 'commanders', 'washington football team', 'redskins', 'washington'], abbr: 'wsh', primary: '#5A1414', secondary: '#FFB612', font: "'Stardos Stencil'" }
   ];
 
+  // Same idea for the NBA — official brand colors, and a free-font echo of
+  // each team's wordmark style, reused from the same pool as the NFL set.
+  const NBA_TEAMS = [
+    { names: ['atlanta hawks', 'hawks', 'atlanta'], abbr: 'atl', primary: '#E03A3E', secondary: '#C1D32F', font: "'Oswald'" },
+    { names: ['boston celtics', 'celtics', 'boston'], abbr: 'bos', primary: '#007A33', secondary: '#BA9653', font: "'Zilla Slab'" },
+    { names: ['brooklyn nets', 'nets', 'brooklyn'], abbr: 'bkn', primary: '#000000', secondary: '#777D84', font: "'Archivo Black'" },
+    { names: ['charlotte hornets', 'hornets', 'charlotte'], abbr: 'cha', primary: '#1D1160', secondary: '#00788C', font: "'Teko'" },
+    { names: ['chicago bulls', 'bulls', 'chicago'], abbr: 'chi', primary: '#CE1141', secondary: '#000000', font: "'Bebas Neue'" },
+    { names: ['cleveland cavaliers', 'cavaliers', 'cavs', 'cleveland'], abbr: 'cle', primary: '#6F263D', secondary: '#FFB81C', font: "'Anton'" },
+    { names: ['dallas mavericks', 'mavericks', 'mavs', 'dallas'], abbr: 'dal', primary: '#00538C', secondary: '#002B5E', font: "'Oswald'" },
+    { names: ['denver nuggets', 'nuggets', 'denver'], abbr: 'den', primary: '#0E2240', secondary: '#FEC524', font: "'Bevan'" },
+    { names: ['detroit pistons', 'pistons', 'detroit'], abbr: 'det', primary: '#C8102E', secondary: '#1D42BA', font: "'Bungee'" },
+    { names: ['golden state warriors', 'warriors', 'golden state', 'gsw'], abbr: 'gs', primary: '#1D428A', secondary: '#FFC72C', font: "'Zilla Slab'" },
+    { names: ['houston rockets', 'rockets', 'houston'], abbr: 'hou', primary: '#CE1141', secondary: '#000000', font: "'Staatliches'" },
+    { names: ['indiana pacers', 'pacers', 'indiana'], abbr: 'ind', primary: '#002D62', secondary: '#FDBB30', font: "'Teko'" },
+    { names: ['la clippers', 'clippers', 'los angeles clippers'], abbr: 'lac', primary: '#C8102E', secondary: '#1D428A', font: "'Archivo Black'" },
+    { names: ['la lakers', 'lakers', 'los angeles lakers'], abbr: 'lal', primary: '#552583', secondary: '#FDB927', font: "'Oswald'" },
+    { names: ['memphis grizzlies', 'grizzlies', 'memphis'], abbr: 'mem', primary: '#5D76A9', secondary: '#12173F', font: "'Bevan'" },
+    { names: ['miami heat', 'heat', 'miami'], abbr: 'mia', primary: '#98002E', secondary: '#F9A01B', font: "'Staatliches'" },
+    { names: ['milwaukee bucks', 'bucks', 'milwaukee'], abbr: 'mil', primary: '#00471B', secondary: '#EEE1C6', font: "'Anton'" },
+    { names: ['minnesota timberwolves', 'timberwolves', 'wolves', 'minnesota'], abbr: 'min', primary: '#0C2340', secondary: '#236192', font: "'Zilla Slab'" },
+    { names: ['new orleans pelicans', 'pelicans', 'new orleans'], abbr: 'no', primary: '#0C2340', secondary: '#C8102E', font: "'Rye'" },
+    { names: ['new york knicks', 'knicks', 'ny knicks', 'new york'], abbr: 'ny', primary: '#006BB6', secondary: '#F58426', font: "'Bungee'" },
+    { names: ['oklahoma city thunder', 'thunder', 'okc', 'oklahoma city'], abbr: 'okc', primary: '#007AC1', secondary: '#EF3B24', font: "'Orbitron'" },
+    { names: ['orlando magic', 'magic', 'orlando'], abbr: 'orl', primary: '#0077C0', secondary: '#C4CED4', font: "'Oswald'" },
+    { names: ['philadelphia 76ers', '76ers', 'sixers', 'philadelphia', 'philly'], abbr: 'phi', primary: '#006BB6', secondary: '#ED174C', font: "'Alfa Slab One'" },
+    { names: ['phoenix suns', 'suns', 'phoenix'], abbr: 'phx', primary: '#1D1160', secondary: '#E56020', font: "'Teko'" },
+    { names: ['portland trail blazers', 'trail blazers', 'blazers', 'portland'], abbr: 'por', primary: '#E03A3E', secondary: '#000000', font: "'Bebas Neue'" },
+    { names: ['sacramento kings', 'kings', 'sacramento'], abbr: 'sac', primary: '#5A2D81', secondary: '#63727A', font: "'Share Tech Mono'" },
+    { names: ['san antonio spurs', 'spurs', 'san antonio'], abbr: 'sa', primary: '#C4CED4', secondary: '#000000', font: "'Anton'" },
+    { names: ['toronto raptors', 'raptors', 'toronto'], abbr: 'tor', primary: '#CE1141', secondary: '#000000', font: "'Archivo Black'" },
+    { names: ['utah jazz', 'jazz', 'utah'], abbr: 'utah', primary: '#002B5C', secondary: '#F9A01B', font: "'Staatliches'" },
+    { names: ['washington wizards', 'wizards', 'washington'], abbr: 'wsh', primary: '#002B5C', secondary: '#E31837', font: "'Stardos Stencil'" }
+  ];
+
+  // Which ESPN "sport" family each supported league belongs to, needed to
+  // build the scoreboard/logo CDN URLs (`.../sports/{sport}/{league}/...`).
+  const LEAGUE_SPORT = { nfl: 'football', nba: 'basketball' };
+
+  const LEAGUES = {
+    nfl: { teams: NFL_TEAMS, sport: LEAGUE_SPORT.nfl },
+    nba: { teams: NBA_TEAMS, sport: LEAGUE_SPORT.nba }
+  };
+
   function normalize(s) {
     return String(s || '').toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
   }
 
-  // Finds the best-matching team for free-text input. Prefers the longest
-  // matching alias so e.g. "Kansas City Chiefs" beats an accidental partial hit.
-  function findTeamMeta(input) {
+  // Finds the best-matching team for free-text input within the given league
+  // ('nfl' or 'nba' — 'other' and anything unrecognized has no team data and
+  // always returns null). Prefers the longest matching alias so e.g. "Kansas
+  // City Chiefs" beats an accidental partial hit.
+  function findTeamMeta(input, league) {
+    const set = LEAGUES[league];
+    if (!set) return null;
     const norm = normalize(input);
     if (!norm) return null;
     let best = null;
     let bestLen = 0;
-    NFL_TEAMS.forEach(team => {
+    set.teams.forEach(team => {
       team.names.forEach(alias => {
         const a = normalize(alias);
         const re = new RegExp('(^|\\s)' + a.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '($|\\s)');
@@ -76,10 +122,10 @@
     return best;
   }
 
-  function logoUrl(team) {
-    if (!team) return null;
-    return `https://a.espncdn.com/i/teamlogos/nfl/500/${team.abbr}.png`;
+  function logoUrl(team, league) {
+    if (!team || !LEAGUES[league]) return null;
+    return `https://a.espncdn.com/i/teamlogos/${league}/500/${team.abbr}.png`;
   }
 
-  return { NFL_TEAMS, findTeamMeta, logoUrl };
+  return { NFL_TEAMS, NBA_TEAMS, LEAGUE_SPORT, findTeamMeta, logoUrl };
 });

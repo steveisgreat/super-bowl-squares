@@ -11,6 +11,7 @@
   const QUARTERS = ['q1', 'q2', 'q3', 'final'];
   const QLABEL = { q1: 'Q1', q2: 'Q2', q3: 'Q3', final: 'FINAL' };
   const STATUSES = ['setup', 'picking', 'started', 'finished'];
+  const LEAGUES = ['nfl', 'nba', 'other'];
 
   // Fisher-Yates. Do NOT replace with arr.sort(() => Math.random() - 0.5) —
   // that is not a uniform shuffle and visibly clusters auto-picked squares.
@@ -179,6 +180,66 @@
     return { pot, results: out, cellLabels, unallocated: carry };
   }
 
+  // Deltas covering every realistic next scoring play: safety (2), field goal
+  // (3), touchdown without the kick (6), touchdown with the kick (7), or a
+  // two-point conversion (8). Kept flat rather than trying to detect the
+  // brief window between a TD landing (+6) and the PAT resolving (+7/+8) —
+  // the 2-point square is already highlighted before the snap, and nothing
+  // needs to change when the PAT resolves either way.
+  const NEAR_SCORE_DELTAS = [2, 3, 6, 7, 8];
+
+  // The square that would win right now if the live/simulated score ended
+  // exactly as-is, plus every square one probable score away for either
+  // team. Used only by the TV screen to show where the game is heading
+  // before a quarter (or the whole game) actually locks in — returns null
+  // whenever there's no live feed in progress or no axis numbers yet.
+  function computeLiveHighlight(game) {
+    const live = game.liveScore;
+    if (!live || live.state !== 'in') return null;
+    if (live.a === null || live.a === undefined || live.b === null || live.b === undefined) return null;
+    if (!game.axisX || !game.axisY) return null;
+
+    const liveRow = findRow(game, lastDigit(live.a));
+    const liveCol = findCol(game, lastDigit(live.b));
+    if (liveRow < 0 || liveCol < 0) return null;
+
+    const winnerKey = `${liveRow}-${liveCol}`;
+    const nearKeys = new Set();
+    NEAR_SCORE_DELTAS.forEach(delta => {
+      const row = findRow(game, lastDigit(live.a + delta));
+      if (row >= 0) {
+        const key = `${row}-${liveCol}`;
+        if (key !== winnerKey) nearKeys.add(key);
+      }
+      const col = findCol(game, lastDigit(live.b + delta));
+      if (col >= 0) {
+        const key = `${liveRow}-${col}`;
+        if (key !== winnerKey) nearKeys.add(key);
+      }
+    });
+
+    return { winnerKey, nearKeys };
+  }
+
+  // A pushed quarter never actually pays anyone — its whole amount rolls
+  // into whichever quarter is scored next (see the carry handling above), so
+  // every place a quarter's payout figure is shown should read $0 for it
+  // rather than the amount that's really just passing through.
+  function payoutAmount(res) {
+    return res.pushed ? 0 : res.amount;
+  }
+
+  // The two axis digits of the square randomly drawn to stand in for an
+  // empty winning square (see "Randomly Draw Winner" on the board/phone) —
+  // null unless this quarter's result was actually auto-resolved that way.
+  // Distinct from the real final score, which is never touched by a draw.
+  function drawnDigits(game, res) {
+    if (!res || !res.autoResolved) return null;
+    if (!game || !game.axisX || !game.axisY) return null;
+    if (res.row === null || res.row === undefined || res.col === null || res.col === undefined) return null;
+    return { y: game.axisY[res.row], x: game.axisX[res.col] };
+  }
+
   function isDigitPermutation(a) {
     if (!Array.isArray(a) || a.length !== 10) return false;
     const seen = new Set(a);
@@ -191,8 +252,16 @@
   function validateGame(game) {
     if (!game || typeof game !== 'object' || Array.isArray(game)) return 'Game must be an object.';
 
-    const year = Number(game.year);
-    if (!Number.isInteger(year) || year < 2000 || year > 2100) return 'Year must be a 4-digit year between 2000 and 2100.';
+    if (!game.gameDate || typeof game.gameDate !== 'string') return 'Game date is required.';
+
+    if (LEAGUES.indexOf(game.league) === -1) return `League must be one of: ${LEAGUES.join(', ')}.`;
+    if (game.league === 'other') {
+      for (const key of ['teamAColor', 'teamBColor']) {
+        if (game[key] !== undefined && game[key] !== null && game[key] !== '' && !/^#[0-9a-fA-F]{6}$/.test(game[key])) {
+          return `${key} must be a hex color (e.g. #336699).`;
+        }
+      }
+    }
 
     const price = Number(game.squarePrice);
     if (!Number.isFinite(price) || price < 0) return 'Square price must be a number of 0 or more.';
@@ -339,9 +408,9 @@
   }
 
   return {
-    QUARTERS, QLABEL, STATUSES,
+    QUARTERS, QLABEL, STATUSES, LEAGUES,
     shuffle, shuffledDigits, emptyGrid,
-    potOf, actualPotOf, findCol, findRow, computeGame,
+    potOf, actualPotOf, findCol, findRow, computeGame, computeLiveHighlight, payoutAmount, drawnDigits,
     validateGame, isDigitPermutation, syncStatus,
     cutoffPassed, lockGame,
     SIM_QUARTER_MS, buildSimPlan, simLiveState, simCumulativeThroughQuarter

@@ -1,6 +1,6 @@
-# Super Bowl Squares
+# $uper-$quares
 
-A self-hosted Super Bowl squares grid game. Runs on your PC, played from any device (iPad, phone, laptop) on the same WiFi network — great for AirPlaying to a TV.
+A self-hosted squares grid game for any sport — NFL, NBA, or a custom "Other" matchup. Runs on your PC, played from any device (iPad, phone, laptop) on the same WiFi network — great for AirPlaying to a TV. You can run any number of games at once, across any mix of sports and dates.
 
 ## Requirements
 
@@ -28,11 +28,11 @@ To AirPlay to a TV: open the iPad URL in Safari, then use Control Center → Scr
 
 ## How to use it
 
-1. **Setup (Step 1):** Create a new game — enter the year, team names, price per square, quarterly payout percentages (must total 100%), how squares can be picked (manual/auto/both), and an optional auto-cutoff time.
+1. **Setup (Step 1):** Create a new game — choose the league (NFL, NBA, or Other), the game date, an optional description, team names (or colors, for Other), price per square, quarterly payout percentages (must total 100%), how squares can be picked (manual/auto/both), and an optional auto-cutoff time.
 2. **Pick Squares (Step 2):** Players enter their name and number of squares, then auto-pick or manually tap squares. The host can lock the board at any time (or it locks automatically at the cutoff time) — this randomly assigns the 0-9 numbers to each row/column and starts the game.
 3. **Game Day (Step 3):** Enter each team's score (last digit) at the end of every quarter. Winning squares are highlighted automatically. Editing a score recalculates everything, including rollover ("push") amounts. If the Final Score square is empty, use "Randomly Draw Winner" to pick a valid winner.
 
-Past years are saved automatically and can be viewed from the Home screen — they cannot be replayed, but quarterly results can still be corrected if needed.
+Every game is saved independently, so you can run several at once — different sports, different dates, or several games on the same day. The Home screen splits them into an **Active** section (anything not finished, or finished earlier today) and a collapsed **Game Archive** for everything older. Archived games can't be replayed, but quarterly results can still be corrected if needed.
 
 If a push (nobody in the winning square) rolls money forward, the rollover goes to whichever quarter is scored next — so it is still paid out correctly even if you fill the quarters in out of order.
 
@@ -46,9 +46,11 @@ This is what makes the game-day arrangement work: the phone, the iPad and the TV
 
 ## Team colors & logos
 
-If the team names you enter in Step 1 match an NFL team (e.g. "Chiefs", "Kansas City Chiefs", or "KC"), the app automatically applies that team's real colors and logo throughout the grid, board, and TV view. A live preview appears under each team name field as you type. If a name doesn't match any team, it falls back to generic red/blue styling — nothing breaks.
+For the **NFL** and **NBA** leagues, if the team names you enter in Step 1 match a real team (e.g. "Chiefs", "Kansas City Chiefs", or "KC"), the app automatically applies that team's real colors and logo throughout the grid, board, and TV view. A live preview appears under each team name field as you type. If a name doesn't match any team, it falls back to generic red/blue styling — nothing breaks.
 
-Logos are fetched at runtime from ESPN's public logo CDN, so the hosting PC needs an internet connection for logos to display (everything else works fully offline). If a logo can't be fetched (no internet, unknown team, etc.), a generic helmet icon is shown instead so the layout never looks broken.
+For the **Other** league (any sport without built-in team data), you instead pick one color per team directly in Setup — the app derives a matching shade for the accents automatically.
+
+Logos are fetched at runtime from ESPN's public logo CDN, so the hosting PC needs an internet connection for logos to display (everything else works fully offline). If a logo can't be fetched (no internet, unknown team, Other league, etc.), a generic helmet icon is shown instead so the layout never looks broken.
 
 ## Payments & players
 
@@ -67,7 +69,7 @@ The intended arrangement once the game starts:
 
 ### TV / Grid-Only View
 
-From the Game Day screen (Step 3), click **"🖥️ Open TV Grid View"** — a clean, large-format, grid-only view: no forms or controls, just the matchup header and a big board sized to fill a 1080p screen edge-to-edge. Direct link: `http://<your-pc-ip>:3000/#tv-<year>` (e.g. `#tv-2026`).
+From the Game Day screen (Step 3), click **"🖥️ Open TV Grid View"** — a clean, large-format, grid-only view: no forms or controls, just the matchup header and a big board sized to fill a 1080p screen edge-to-edge. Direct link: `http://<your-pc-ip>:3000/#tv-<game-id>`.
 
 - **⛶ Fullscreen** hides the browser's own toolbars. The button appears top-right and **fades out after three seconds of no input**, so the television shows nothing but the grid; move the mouse or tap the screen to bring it back.
 - The view holds a **screen wake lock** while it's open, so the iPad doesn't auto-lock and kill the AirPlay session mid-game.
@@ -75,7 +77,7 @@ From the Game Day screen (Step 3), click **"🖥️ Open TV Grid View"** — a c
 
 ### Phone Score Entry
 
-From Game Day, click **"📱 Phone Score Entry"** — it shows the address to open on your phone (same WiFi), e.g. `http://<your-pc-ip>:3000/#score-<year>`.
+From Game Day, click **"📱 Phone Score Entry"** — it shows the address to open on your phone (same WiFi), e.g. `http://<your-pc-ip>:3000/#score-<game-id>`.
 
 The phone view is built for one thumb at a party: pick a quarter from the tabs across the top, then **tap the last digit** of each team's score on a big keypad — no typing, so the keyboard never covers the screen. Each tap saves immediately and the TV picks it up on its next refresh. It also shows what the quarter pays, who won it, and a running list of winners so far. Quarters already scored are ticked, and it opens on the first quarter still needing a score.
 
@@ -89,7 +91,7 @@ If the page doesn't load at all (blank/spinning tab, or "the server stopped resp
 
 ## Data storage
 
-Each year's game is saved as a JSON file in the `data/` folder. Back that folder up if you want to preserve history long-term. Saves are written to a temporary file and then renamed into place, so a crash or power cut mid-save can't leave a half-written game behind.
+Each game is saved as its own JSON file (named by a generated ID) in the `data/` folder. Back that folder up if you want to preserve history long-term. Saves are written to a temporary file and then renamed into place, so a crash or power cut mid-save can't leave a half-written game behind.
 
 ## Development
 

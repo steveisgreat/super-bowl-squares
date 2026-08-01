@@ -1,7 +1,7 @@
 {
-  "name": "super-bowl-grid-game",
+  "name": "super-square-pools",
   "version": "1.0.0",
-  "description": "Local-network Super Bowl squares grid game",
+  "description": "Local-network squares grid game for any sport",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
