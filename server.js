@@ -8,10 +8,9 @@ const path = require('path');
 const os = require('os');
 const GameLogic = require('./public/compute.js');
 const LiveScore = require('./server-livescore.js');
-const { startLiveScorePolling } = LiveScore;
+const store = require('./lib/store.js');
 
 const PORT = process.env.PORT || 3000;
-const DATA_DIR = path.join(__dirname, 'data');
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
 // Set once the HTTPS server is actually ready to accept TLS connections, so
@@ -20,10 +19,6 @@ const PUBLIC_DIR = path.join(__dirname, 'public');
 // below) so there's only ever one port to open in Windows Firewall and one
 // port the start/stop .bat scripts need to know about.
 let httpsReady = false;
-
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-
-startLiveScorePolling(DATA_DIR);
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -66,82 +61,9 @@ function readBody(req) {
   });
 }
 
-// Every game gets a server-generated UUID as its permanent identity — this is
-// what makes multiple games (any year, any sport) coexist without collision,
-// now that a game is no longer keyed by its year. Only ever accepts that exact
-// shape, so a junk value can never produce a stray file such as `.json` in
-// the data folder.
-const ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-function gameFile(id) {
-  const s = String(id).trim();
-  if (!ID_RE.test(s)) return null;
-  return path.join(DATA_DIR, `${s}.json`);
-}
-
-// Atomic save: write a temp file and rename over the target. A crash, power cut
-// or OneDrive sync landing mid-write can then never leave a truncated,
-// unparseable game file behind.
-function writeGameFile(file, game) {
-  const tmp = `${file}.${process.pid}.tmp`;
-  fs.writeFileSync(tmp, JSON.stringify(game, null, 2));
-  fs.renameSync(tmp, file);
-}
-
-function readGameFile(file) {
-  return JSON.parse(fs.readFileSync(file, 'utf8'));
-}
-
-// The browser can only lock picking at the cutoff while someone has the app
-// open. The server owns the clock too, so a cutoff still fires if every device
-// is asleep.
-function applyAutoCutoff(game, file) {
-  let changed = false;
-  if (GameLogic.cutoffPassed(game)) {
-    GameLogic.lockGame(game);
-    changed = true;
-  }
-  // Also re-derives started/finished on read, so games saved before this
-  // distinction existed pick up the right status without needing an edit.
-  const statusBefore = game.status;
-  GameLogic.syncStatus(game);
-  if (game.status !== statusBefore) changed = true;
-  if (changed) {
-    game.updatedAt = new Date().toISOString();
-    writeGameFile(file, game);
-  }
-  return game;
-}
-
-function listGames() {
-  const files = fs.readdirSync(DATA_DIR).filter(f => ID_RE.test(f.replace(/\.json$/, '')));
-  const games = files.map(f => {
-    try {
-      const full = path.join(DATA_DIR, f);
-      const g = applyAutoCutoff(readGameFile(full), full);
-      return {
-        id: g.id,
-        teamA: g.teamA,
-        teamB: g.teamB,
-        league: g.league,
-        teamAColor: g.teamAColor,
-        teamBColor: g.teamBColor,
-        description: g.description || '',
-        gameDate: g.gameDate,
-        status: g.status,
-        updatedAt: g.updatedAt || null
-      };
-    } catch (e) {
-      console.error(`Skipping unreadable game file ${f}: ${e.message}`);
-      return null;
-    }
-  }).filter(Boolean);
-  games.sort((a, b) => (b.gameDate || '').localeCompare(a.gameDate || ''));
-  return games;
-}
-
 async function handleApi(req, res, pathname, query) {
   if (pathname === '/api/games' && req.method === 'GET') {
-    return sendJSON(res, 200, listGames());
+    return sendJSON(res, 200, await store.listGames());
   }
 
   // Lets the Game Day screen print the address to type into a phone — the
@@ -161,16 +83,27 @@ async function handleApi(req, res, pathname, query) {
 
   const gameMatch = pathname.match(/^\/api\/game\/([0-9a-f-]{36})$/i);
   if (gameMatch && req.method === 'GET') {
-    const file = gameFile(gameMatch[1]);
-    if (!file || !fs.existsSync(file)) return sendJSON(res, 404, { error: 'Not found' });
-    const game = applyAutoCutoff(readGameFile(file), file);
+    const game = await store.getGame(gameMatch[1]);
+    if (!game) return sendJSON(res, 404, { error: 'Not found' });
+
+    // Live scores refresh here rather than on a timer, so they work on a host
+    // that keeps no long-lived process. The read we just did supplies the
+    // concurrency token, so a save landing between that read and this write
+    // wins outright and the client is handed that newer game instead.
+    const expectedUpdatedAt = game.updatedAt || null;
+    if (await LiveScore.refreshLiveScore(game)) {
+      GameLogic.syncStatus(game);
+      // Either way the caller wants the winning document: our refreshed one if
+      // the write landed, or the newer one that beat us to it.
+      const saved = await store.updateGame(gameMatch[1], game, expectedUpdatedAt);
+      return sendJSON(res, 200, saved.game);
+    }
     return sendJSON(res, 200, game);
   }
 
   if (gameMatch && req.method === 'DELETE') {
-    const file = gameFile(gameMatch[1]);
-    if (!file || !fs.existsSync(file)) return sendJSON(res, 404, { error: 'Not found' });
-    fs.unlinkSync(file);
+    const ok = await store.deleteGame(gameMatch[1]);
+    if (!ok) return sendJSON(res, 404, { error: 'Not found' });
     return sendJSON(res, 200, { ok: true });
   }
 
@@ -184,11 +117,8 @@ async function handleApi(req, res, pathname, query) {
     body.id = crypto.randomUUID();
     const invalid = GameLogic.validateGame(body);
     if (invalid) return sendJSON(res, 400, { error: invalid });
-    const file = gameFile(body.id);
-    body.createdAt = new Date().toISOString();
-    body.updatedAt = body.createdAt;
-    writeGameFile(file, body);
-    return sendJSON(res, 201, body);
+    const game = await store.createGame(body);
+    return sendJSON(res, 201, game);
   }
 
   if (gameMatch && req.method === 'PUT') {
@@ -198,7 +128,6 @@ async function handleApi(req, res, pathname, query) {
     } catch (e) {
       return sendJSON(res, 400, { error: 'Invalid JSON' });
     }
-    const file = gameFile(gameMatch[1]);
     const clientUpdatedAt = body.updatedAt || null;
     body.id = gameMatch[1].toLowerCase();
     GameLogic.syncStatus(body);
@@ -206,24 +135,15 @@ async function handleApi(req, res, pathname, query) {
     const invalid = GameLogic.validateGame(body);
     if (invalid) return sendJSON(res, 400, { error: invalid });
 
-    if (fs.existsSync(file)) {
-      const existing = readGameFile(file);
-      // Optimistic concurrency: every client PUTs the whole game, so without
-      // this check two devices editing at once silently overwrite each other.
-      if (existing.updatedAt && clientUpdatedAt && existing.updatedAt !== clientUpdatedAt) {
-        return sendJSON(res, 409, {
-          error: 'This game was changed on another device.',
-          conflict: true,
-          game: existing
-        });
-      }
-      body.createdAt = existing.createdAt || new Date().toISOString();
-    } else {
-      body.createdAt = new Date().toISOString();
+    const result = await store.updateGame(gameMatch[1], body, clientUpdatedAt);
+    if (!result.ok) {
+      return sendJSON(res, 409, {
+        error: 'This game was changed on another device.',
+        conflict: true,
+        game: result.game
+      });
     }
-    body.updatedAt = new Date().toISOString();
-    writeGameFile(file, body);
-    return sendJSON(res, 200, body);
+    return sendJSON(res, 200, result.game);
   }
 
   sendJSON(res, 404, { error: 'Not found' });

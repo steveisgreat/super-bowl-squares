@@ -4,17 +4,14 @@
 // strictly best-effort: if ESPN is unreachable, changes its response shape, or
 // doesn't recognize a team name, nothing updates and manual entry (board
 // screen / phone) keeps working exactly as before.
-const fs = require('fs');
-const path = require('path');
 const GameLogic = require('./public/compute.js');
 const TeamData = require('./public/teams.js');
 
 const SCOREBOARD_BASE = 'https://site.api.espn.com/apis/site/v2/sports';
-// The base tick is fast so a simulated game's 2-minute quarters visibly tick
-// down; a real ESPN lookup only actually fires every Nth tick so we're not
-// hammering an unofficial endpoint every 5 seconds.
-const POLL_MS = 5000;
-const ESPN_TICKS = 4; // ~20s between real ESPN calls per game
+// Real ESPN lookups are throttled per game rather than run on a timer, so that
+// however many clients are polling the board, an unofficial endpoint sees at
+// most one request per game in this window.
+const ESPN_MIN_INTERVAL_MS = 20000;
 const FETCH_TIMEOUT_MS = 8000;
 
 function pad2(n) { return String(n).padStart(2, '0'); }
@@ -203,53 +200,70 @@ async function getTodaysGames(ymd, league) {
   }).filter(Boolean);
 }
 
-function startLiveScorePolling(dataDir) {
-  let tick = 0;
+// Last completed ESPN check per game, for this process only. The persisted
+// `liveScore.updatedAt` above is the real cross-process throttle, but it only
+// advances when the score actually changed — so during a genuinely static
+// stretch (pre-game, halftime, or an ESPN outage returning nothing) it would
+// never move and every read would re-fetch. This backstop closes that gap.
+const lastChecked = new Map();
 
-  async function pollOnce() {
-    tick++;
-    const checkEspnThisTick = tick % ESPN_TICKS === 0;
+// One in-flight ESPN lookup per game at a time. When a burst of clients polls
+// the same game together, the first opens the request and the rest return the
+// data they already have rather than queueing behind an 8s network timeout.
+const inFlight = new Map();
 
-    let files;
-    try {
-      files = fs.readdirSync(dataDir).filter(f => /^[0-9a-f-]{36}\.json$/i.test(f));
-    } catch (e) {
-      return;
-    }
-    for (const f of files) {
-      const full = path.join(dataDir, f);
-      let game;
-      try {
-        game = JSON.parse(fs.readFileSync(full, 'utf8'));
-      } catch (e) {
-        continue;
-      }
-      // Only games that are locked and not yet finished are worth tracking;
-      // setup/picking games have no score yet and a finished game already
-      // has its final score.
-      if (game.status !== 'started') continue;
-      // A simulated game needs no network call, so it updates every tick
-      // (its clock ticks every 5s); a real game is only looked up on ESPN
-      // every ESPN_TICKS-th tick, to stay polite to an unofficial endpoint.
-      if (!game.simulation && !checkEspnThisTick) continue;
-      try {
-        const changed = game.simulation
-          ? applySimulatedData(game)
-          : applyLiveData(game, await findEvent(game.teamA, game.teamB, game.league) || {});
-        if (!changed) continue;
-        GameLogic.syncStatus(game);
-        game.updatedAt = new Date().toISOString();
-        const tmp = `${full}.${process.pid}.livescore.tmp`;
-        fs.writeFileSync(tmp, JSON.stringify(game, null, 2));
-        fs.renameSync(tmp, full);
-      } catch (e) {
-        console.error(`Live score update failed for ${f}: ${e.message}`);
-      }
-    }
-  }
-
-  pollOnce();
-  return setInterval(pollOnce, POLL_MS);
+function checkedRecently(game, now) {
+  const stamps = [
+    game.liveScore && game.liveScore.updatedAt ? Date.parse(game.liveScore.updatedAt) : null,
+    lastChecked.get(game.id)
+  ];
+  return stamps.some(t => {
+    if (!t) return false;
+    const age = now - t;
+    // A negative age means a clock skew or a hand-edited timestamp from the
+    // future; treat that as stale rather than blocking lookups indefinitely.
+    return age >= 0 && age < ESPN_MIN_INTERVAL_MS;
+  });
 }
 
-module.exports = { startLiveScorePolling, getTodaysGames };
+// Mutates `game` in place and returns true if anything changed, so the caller
+// knows to persist it. This replaces the old background poller: a game is now
+// only ever looked up because somebody is actually looking at it, which is
+// what makes the app work on a host with no long-lived process — and means no
+// ESPN traffic at all when nobody has the board open.
+async function refreshLiveScore(game) {
+  // Only games that are locked and not yet finished are worth tracking;
+  // setup/picking games have no score yet and a finished game already has its
+  // final score.
+  if (!game || game.status !== 'started') return false;
+
+  // A simulated game is a pure function of wall clock against the plan drawn
+  // at lock time — no network call, so there is nothing to throttle.
+  if (game.simulation) return applySimulatedData(game);
+
+  const now = Date.now();
+  if (checkedRecently(game, now)) return false;
+  // Check-then-set with no await in between, so the event loop cannot
+  // interleave another request between these two lines.
+  if (inFlight.has(game.id)) return false;
+
+  const work = (async () => {
+    const comp = await findEvent(game.teamA, game.teamB, game.league);
+    return applyLiveData(game, comp || {});
+  })();
+  inFlight.set(game.id, work);
+
+  try {
+    return await work;
+  } catch (e) {
+    // Best-effort by design: a failed lookup leaves the game untouched and
+    // manual score entry keeps working exactly as before.
+    console.error(`Live score refresh failed for ${game.id}: ${e.message}`);
+    return false;
+  } finally {
+    lastChecked.set(game.id, Date.now());
+    inFlight.delete(game.id);
+  }
+}
+
+module.exports = { refreshLiveScore, getTodaysGames };
