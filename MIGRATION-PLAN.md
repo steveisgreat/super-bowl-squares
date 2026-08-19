@@ -53,9 +53,20 @@ direct string will exhaust the connection limit. Store it in `.env.local` and ad
 
 ### 0.4 Link Vercel to GitHub — `Human` — ~10 min
 
-Sign in to Vercel with GitHub and import `steveisgreat/super-bowl-squares`, but **do not
-deploy yet** — the repo has no `vercel.json` and would deploy wrong. Just establish the
-link.
+Sign in to Vercel with GitHub and import `steveisgreat/super-bowl-squares`.
+
+Vercel **always deploys on project creation** — there is no import-without-deploy option.
+That first deploy will be broken, and that is expected: there is no `vercel.json` yet, so
+nothing routes `/api/*` and `index.html` sits in `public/` rather than at the root. Phase
+3 fixes it. It cannot affect anything locally.
+
+On the import screen set **Framework Preset: Other**, and leave Build Command and Output
+Directory empty — there is no build step. While you are there, add `DATABASE_URL` (the
+pooled string from 0.3) as an environment variable scoped to all three environments, so
+Phase 3 does not need a second trip.
+
+Note that Production tracks `master`, and `cloud` has not been pushed yet — so until you
+push it, Vercel only ever builds `master`.
 
 ---
 
