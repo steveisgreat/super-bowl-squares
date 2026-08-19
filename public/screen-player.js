@@ -393,7 +393,18 @@
       const hosts = await SBS.api.getHosts();
       const path = `${location.pathname}#player-${id}`;
       if (!hosts.addresses.length) {
-        list.innerHTML = `<p class="error-msg">No network address found. Run <code>ipconfig</code> on this PC to find its IP.</p>`;
+        // Cloud deploy: there's one public origin and the browser already
+        // knows it, so there's no LAN address list to report.
+        const url = `${location.origin}${path}`;
+        let qr = '';
+        try {
+          qr = window.QRCode.toSvg(url, 150);
+        } catch (err) {
+          console.error('QR encode failed', err);
+        }
+        list.innerHTML = qr
+          ? `<div class="phone-qr-block"><div class="phone-qr">${qr}</div><div class="phone-link">${escapeHtml(url)}</div></div>`
+          : `<div class="phone-link">${escapeHtml(url)}</div>`;
       } else {
         const scheme = hosts.httpsReady ? 'https' : 'http';
         const urls = hosts.addresses.map(ip => `${scheme}://${ip}:${hosts.port}${path}`);

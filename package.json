@@ -9,6 +9,9 @@
     "test:store": "node test-store.js"
   },
   "license": "MIT",
+  "engines": {
+    "node": "24.x"
+  },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
     "selfsigned": "^5.5.0"

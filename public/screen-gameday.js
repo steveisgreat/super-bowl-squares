@@ -526,7 +526,18 @@
       const hosts = await SBS.api.getHosts();
       const path = `${location.pathname}#score-${id}`;
       if (!hosts.addresses.length) {
-        list.innerHTML = `<p class="error-msg">No network address found. Run <code>ipconfig</code> on this PC to find its IP.</p>`;
+        // Cloud deploy: there's one public origin and the browser already
+        // knows it, so there's no LAN address list to report.
+        const url = `${location.origin}${path}`;
+        let qr = '';
+        try {
+          qr = window.QRCode.toSvg(url, 132);
+        } catch (err) {
+          console.error('QR encode failed', err);
+        }
+        list.innerHTML = qr
+          ? `<div class="phone-qr-block"><div class="phone-qr">${qr}</div><div class="phone-link">${escapeHtml(url)}</div></div>`
+          : `<div class="phone-link">${escapeHtml(url)}</div>`;
       } else {
         // Show one QR code, for the first (primary) address — a QR per
         // address was confusing when a PC has more than one adapter. Any
