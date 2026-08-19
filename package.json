@@ -10,6 +10,7 @@
   },
   "license": "MIT",
   "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
     "selfsigned": "^5.5.0"
   }
 }
