@@ -216,10 +216,33 @@
     main.appendChild(card);
 
     let games = [];
+    let needsSignIn = false;
     try {
-      games = await SBS.api.getGames();
+      // A TV browser has no keyboard worth the name, so it never gets the
+      // sign-in prompt — it falls through to the read-only state below and
+      // is opened at a game with a #tv-<id> link instead.
+      games = await SBS.api.getGames(isTvBrowser() ? { prompt: false } : undefined);
     } catch (e) {
-      card.appendChild(el('div', 'error-msg', 'Could not load saved games: ' + e.message));
+      if (e.authRequired) {
+        needsSignIn = true;
+      } else {
+        card.appendChild(el('div', 'error-msg', 'Could not load saved games: ' + e.message));
+      }
+    }
+
+    // The saved-games list is host-only in the cloud (it used to enumerate
+    // every game anyone had ever created). Anyone who isn't signed in still
+    // reaches their own game through the link or QR code they were given.
+    if (needsSignIn) {
+      card.appendChild(el('p', '', 'Sign in as the host to see and manage saved games. If you were sent a link or scanned a QR code, open that instead — it needs no sign-in.'));
+      const signInActions = el('div', 'actions');
+      const signInBtn = el('button', '', 'Host sign-in');
+      signInBtn.addEventListener('click', async () => {
+        if (await SBS.api.signIn()) SBS.go({ screen: 'home' });
+      });
+      signInActions.appendChild(signInBtn);
+      card.appendChild(signInActions);
+      return;
     }
 
     const active = games.filter(g => !isArchived(g));
@@ -252,6 +275,24 @@
       main.appendChild(archiveWrap);
     }
 
+    // Sign-out lives here and only here: Home is the host console, and it's
+    // the one screen a host is on when they want to hand the laptop over.
+    // Absent entirely on the LAN, where there is no sign-in to undo.
+    try {
+      const session = await SBS.api.getSession();
+      if (session.authRequired && session.host) {
+        const outBtn = el('button', 'ghost', 'Sign out');
+        outBtn.type = 'button';
+        outBtn.addEventListener('click', async () => {
+          await SBS.api.signOut();
+          SBS.go({ screen: 'home' });
+        });
+        app.querySelector('.topbar .nav').appendChild(outBtn);
+      }
+    } catch (e) {
+      // Never block Home on the session probe.
+    }
+
     const actions = el('div', 'actions');
     const newBtn = el('button', '', '+ New Game');
     newBtn.addEventListener('click', () => SBS.go({ screen: 'setup' }));
@@ -266,7 +307,9 @@
     SBS.setManagedInterval(async () => {
       let latest;
       try {
-        latest = await SBS.api.getGames();
+        // Silent: a session expiring under an 8-second poll must not throw a
+        // password modal over whatever the host is looking at.
+        latest = await SBS.api.getGames({ prompt: false });
       } catch (e) {
         return;
       }

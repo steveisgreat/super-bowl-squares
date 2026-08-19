@@ -13,7 +13,9 @@
     // pick.
     if (initial.screen === 'home' && SBS.ui.isTvBrowser()) {
       try {
-        const games = await SBS.api.getGames();
+        // Silent: a TV with no host session just falls through to Home
+        // rather than demanding a password on a remote control.
+        const games = await SBS.api.getGames({ prompt: false });
         const active = games.filter(g => !SBS.isArchivedGame(g));
         if (active.length === 1) {
           SBS.go({ screen: 'tv', id: active[0].id });

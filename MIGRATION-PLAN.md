@@ -223,9 +223,50 @@ The enumeration endpoint is the blocker and must change regardless. Beyond that 
 real choice: a per-game host passphrase, or accept unguessable UUIDs as the only
 protection and stop listing games globally.
 
-### 4.2 Implement the chosen model — `Sonnet` — ~2 hr
+**Decision: one site-wide host session; the UUID is a read capability only.**
 
-Scope depends on 4.1. Skip entirely if the decision is "UUID-only".
+Neither option as written. Pure UUID-only fails on its own premise — the id is not
+secret. It is on the player QR code (`#player-<id>`), the TV deep link (`#tv-<id>`) and
+the score-entry link (`#score-<id>`), so every guest holds it, and it would authorize
+`DELETE` and a whole-document `PUT`. A per-game passphrase is the wrong shape too: there
+is one host, so it would add per-game secret storage and a "which phrase was that game?"
+problem at a party, and still could not scope `/api/games`, since there is no per-game
+identity to scope it by.
+
+| Endpoint | Access |
+|---|---|
+| `GET /api/game/:id` | public — the id is the read capability |
+| `GET /api/hosts` | public (empty in cloud; the player view needs it for the QR) |
+| `GET /api/games` | host only — the enumeration blocker, closed |
+| `POST /api/game`, `PUT /api/game/:id`, `DELETE /api/game/:id` | host only |
+| `GET /api/todays-games` | host only — only setup uses it; no open ESPN proxy |
+
+`HOST_PASSWORD` env var; `POST /api/session` checks it with `timingSafeEqual` and sets a
+stateless signed cookie (`<expiry>.<HMAC-SHA256>`, 30 days). No session store, no schema
+change, no new dependency. **`HOST_PASSWORD` unset disables auth entirely**, which is
+what keeps the LAN server behaving exactly as before — the same switch idiom as
+`DATABASE_URL` in `store.js`.
+
+Consequences accepted: phone score entry needs the password (it is the same
+whole-document write picking uses); the TV auto-jump in `app.js` falls through to Home
+when unsigned rather than prompting on a remote control, and `#tv-<id>` still works; and
+there is no real brute-force rate limit on serverless, only a fixed delay on failed
+logins plus a long random password.
+
+### 4.2 Implement the chosen model — `Opus` — ~2 hr — **done**
+
+Retiered from Sonnet: 4.1 landed on cookie signing and constant-time comparison, which is
+security-critical and expensive to unwind.
+
+- `lib/auth.js` (new) — password check, signed-cookie issue/verify, `isHost(req)`.
+- `lib/api.js` — `denyUnlessHost` guards, `/api/session` GET/POST/DELETE. Authorization
+  is route-level, never in the store: the server-owned writes an anonymous read triggers
+  (live-score refresh, `applyAutoCutoff`) must keep working.
+- `public/core.js` — a 401 prompts sign-in once and replays the request, so existing call
+  sites keep their shape; `{ prompt: false }` opts out for background polls and the TV.
+- `public/ui.js` — `showPasswordPrompt`.
+- `public/screen-home.js` — signed-out read-only state, sign-out button.
+- `lib/store.js`, `store-fs.js`, `store-pg.js` — unchanged.
 
 > **Session note:** 4.1 is a fresh security design question and Phase 3's deployment
 > context is mostly irrelevant to it. **Start a new session** for 4.1, then **stay in

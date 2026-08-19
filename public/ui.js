@@ -55,6 +55,48 @@
   const showConfirm = (message) => showModal({ message, okText: 'Confirm', cancelText: 'Cancel' });
   const showAlert = (message) => showModal({ message, okText: 'OK', cancelText: null });
 
+  // Host sign-in prompt. Resolves with the typed password, or null if the
+  // host dismissed it — a dismissal is a real answer ("I'm just watching"),
+  // not an error, so callers fall back to read-only rather than retrying.
+  function showPasswordPrompt(message) {
+    return new Promise(resolve => {
+      const overlay = overlayEl();
+      const box = el('div', 'card');
+      box.style.cssText = 'max-width:440px; width:100%; box-shadow: var(--shadow-pop);';
+      const intro = message || 'Enter the host password to manage games. Watching the board, or a player view, needs no sign-in.';
+      box.innerHTML = `<h3 style="margin-top:0">Host sign-in</h3>
+        <p style="color:var(--muted)">${escapeHtml(intro)}</p>`;
+      const input = el('input', '');
+      input.type = 'password';
+      input.autocomplete = 'current-password';
+      input.placeholder = 'Host password';
+      box.appendChild(input);
+      const err = el('div', 'error-msg hidden');
+      box.appendChild(err);
+      const actions = el('div', 'actions');
+      const okBtn = el('button', '', 'Sign in');
+      const cancelBtn = el('button', 'secondary', 'Not now');
+      const done = (value) => { overlay.remove(); resolve(value); };
+      okBtn.addEventListener('click', () => {
+        const v = input.value;
+        if (!v) {
+          err.textContent = 'Please enter the password.';
+          err.classList.remove('hidden');
+          return;
+        }
+        done(v);
+      });
+      cancelBtn.addEventListener('click', () => done(null));
+      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') okBtn.click(); });
+      actions.appendChild(okBtn);
+      actions.appendChild(cancelBtn);
+      box.appendChild(actions);
+      overlay.appendChild(box);
+      document.body.appendChild(overlay);
+      input.focus();
+    });
+  }
+
   // Generic multi-button choice modal (used for duplicate-name resolution etc.)
   function showChoice({ message, buttons }) {
     return new Promise(resolve => {
@@ -450,7 +492,7 @@
 
   SBS.ui = {
     el, escapeHtml, money, overlayEl, fullscreen, keepScreenAwake,
-    showModal, showConfirm, showAlert, showChoice,
+    showModal, showConfirm, showAlert, showChoice, showPasswordPrompt,
     topbar, statusLabel, leagueLabel, leagueBadge, isTvBrowser, isPhone,
     teamMeta, teamStyle, applyTeamColors, resetTeamColors, teamLogoTag,
     teamColor, readableTextColor, teamBadge, fitTeamBadges, teamAbbr, shadeColor,

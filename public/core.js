@@ -10,10 +10,10 @@
   SBS.screens = {}; // filled in by the screens-*.js files
 
   // ---------- API ----------
-  async function request(path, opts) {
+  async function rawRequest(path, opts) {
     let res;
     try {
-      res = await fetch(path, opts);
+      res = await fetch(path, Object.assign({ credentials: 'same-origin' }, opts));
     } catch (e) {
       throw new Error('Could not reach the server. Make sure it\'s running (double-click start-app.bat or start-server.bat in the project folder), then try again.');
     }
@@ -22,6 +22,7 @@
     if (!res.ok) {
       const err = new Error((data && data.error) || `Request failed (${res.status})`);
       err.status = res.status;
+      if (res.status === 401 && data && data.authRequired) err.authRequired = true;
       if (res.status === 409 && data && data.conflict) {
         err.conflict = true;
         err.game = data.game;
@@ -37,8 +38,60 @@
     body: JSON.stringify(body)
   });
 
+  // ---------- Host sign-in ----------
+  // In the cloud, managing games needs the host password; reading one game by
+  // its id (the player view, the TV grid) never does — see lib/auth.js for why
+  // the id alone can't gate a write.
+  //
+  // Only ever one prompt on screen at a time: several screens poll at once, so
+  // a session expiring mid-game would otherwise stack a modal per in-flight
+  // request.
+  let signInPending = null;
+
+  function promptSignIn(message) {
+    if (signInPending) return signInPending;
+    signInPending = (async () => {
+      let msg = message;
+      // Loops so a typo costs one more try, not the whole action.
+      for (;;) {
+        const password = await SBS.ui.showPasswordPrompt(msg);
+        // Dismissing is a real answer ("I'm just watching"), not an error.
+        if (password === null) return false;
+        try {
+          await rawRequest('/api/session', json('POST', { password }));
+          return true;
+        } catch (e) {
+          if (e.status !== 401) {
+            await SBS.ui.showAlert('Could not sign in: ' + e.message);
+            return false;
+          }
+          msg = 'That password is not right. Try again?';
+        }
+      }
+    })().finally(() => { signInPending = null; });
+    return signInPending;
+  }
+
+  // A 401 means this device isn't signed in as the host — prompt once, then
+  // replay the request, so every existing call site keeps its shape. Callers
+  // that must stay silent (a background poll, a TV with no keyboard) pass
+  // { prompt: false } and handle the 401 themselves.
+  async function request(path, opts, o) {
+    try {
+      return await rawRequest(path, opts);
+    } catch (e) {
+      if (!e.authRequired || (o && o.prompt === false)) throw e;
+      const signedIn = await promptSignIn();
+      if (!signedIn) throw e;
+      return rawRequest(path, opts);
+    }
+  }
+
   SBS.api = {
-    getGames: () => request('/api/games'),
+    getGames: (o) => request('/api/games', null, o),
+    getSession: () => rawRequest('/api/session'),
+    signIn: (message) => promptSignIn(message),
+    signOut: () => rawRequest('/api/session', { method: 'DELETE' }),
     getGame: (id) => request(`/api/game/${id}`),
     createGame: (game) => request('/api/game', json('POST', game)),
     saveGame: (game) => request(`/api/game/${game.id}`, json('PUT', game)),
