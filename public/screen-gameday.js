@@ -593,6 +593,13 @@
     const header = el('div', 'tv-header');
     screenEl.appendChild(header);
 
+    // Live "time until kickoff" clock — separate from `header` (which the
+    // poll below rebuilds from scratch every 4s) so it can tick every
+    // second on its own without fighting that rebuild. Only ever shown pre-
+    // kickoff; ticks itself into hiding the moment kickoff time passes.
+    const kickoffCountdown = el('div', 'tv-kickoff-countdown hidden');
+    screenEl.appendChild(kickoffCountdown);
+
     const tvQuarters = el('div', 'tv-quarters');
     screenEl.appendChild(tvQuarters);
 
@@ -681,6 +688,36 @@
     let finalSummaryBurstTimer = null;
     let finalSummarySignature = null;
     let lastGame = null;
+
+    // "Kickoff in 1d 03:22:07" — days only shown once there's more than a
+    // day left, so the common case doesn't waste width on a leading "0d".
+    function formatCountdown(ms) {
+      const totalSec = Math.max(0, Math.floor(ms / 1000));
+      const days = Math.floor(totalSec / 86400);
+      const hours = Math.floor((totalSec % 86400) / 3600);
+      const mins = Math.floor((totalSec % 3600) / 60);
+      const secs = totalSec % 60;
+      const clock = [hours, mins, secs].map(n => String(n).padStart(2, '0')).join(':');
+      return days > 0 ? `${days}d ${clock}` : clock;
+    }
+
+    function tickKickoffCountdown() {
+      const game = lastGame;
+      const kickoffMs = game && game.kickoffTime ? Date.parse(game.kickoffTime) : NaN;
+      if (!game || isNaN(kickoffMs) || game.status === 'started' || game.status === 'finished') {
+        kickoffCountdown.classList.add('hidden');
+        return;
+      }
+      const diff = kickoffMs - Date.now();
+      if (diff <= 0) {
+        kickoffCountdown.classList.add('hidden');
+        return;
+      }
+      kickoffCountdown.classList.remove('hidden');
+      kickoffCountdown.innerHTML = `<span class="tv-kickoff-label">Kickoff in</span><span class="tv-kickoff-clock">${formatCountdown(diff)}</span>`;
+    }
+    tickKickoffCountdown();
+    const kickoffCountdownTimer = setInterval(tickKickoffCountdown, 1000);
 
     // ---- Randomly-drawn Final winner reveal (mirrors the board's) ----
     // While this is playing, the normal quarter-win celebration for Final is
@@ -944,6 +981,7 @@
     // Leaving the TV route tears down everything the screen installed.
     SBS.onLeaveScreen(() => {
       clearTimeout(idleTimer);
+      clearInterval(kickoffCountdownTimer);
       stopFsWatch();
       releaseWakeLock();
       removeCelebration();

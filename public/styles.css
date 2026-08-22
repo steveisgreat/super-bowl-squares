@@ -999,6 +999,33 @@ body.tv-fullscreen .tv-header .live-score-bar { font-size: 1.5rem; }
   background: var(--chrome-bg);
   animation: brand-pill-glow 2.4s ease-in-out infinite;
 }
+.tv-kickoff-countdown {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 12px;
+  margin: 0 0 12px;
+  padding: 8px 26px;
+  border-radius: 999px;
+  border: 1px solid var(--accent);
+  background: var(--chrome-bg);
+  align-self: center;
+}
+.tv-kickoff-label {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.tv-kickoff-clock {
+  font-size: 1.6rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+}
+body.tv-fullscreen .tv-kickoff-clock { font-size: 2rem; }
 /* Controls sit over the grid and fade out after a few idle seconds so the
    television shows nothing but the board. Any tap or mouse move revives them. */
 .tv-controls {
