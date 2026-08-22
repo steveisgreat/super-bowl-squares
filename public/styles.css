@@ -1107,6 +1107,78 @@ body.tv-fullscreen .tv-kickoff-clock { font-size: 2rem; }
 .tv-qchip.push .tvq-status { color: var(--warn); font-weight: 700; }
 body.tv-fullscreen .tv-quarters { margin-bottom: 6px; }
 
+/* --- EXPERIMENTAL: Neon glassmorphism theme for the TV Grid View's grid
+   ONLY — header, live score bar, quarter strip, controls and background
+   stay exactly as shipped. Scoped under .tv-screen (only ever rendered by
+   the TV route) so nothing outside it is touched. */
+.tv-screen .board-grid-outer {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(0,229,255,0.3);
+  border-radius: 18px;
+  padding: 14px;
+  box-shadow: 0 0 60px rgba(0,229,255,0.12), 0 30px 70px rgba(0,0,0,0.5);
+}
+.tv-screen .board-table { background: transparent; gap: 3px; padding: 0; }
+.tv-screen .cell {
+  background: rgba(255,255,255,0.035);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 6px;
+}
+.tv-screen .cell.head {
+  background: transparent;
+  color: #00e5ff;
+  text-shadow: 0 0 10px rgba(0,229,255,0.5);
+}
+.tv-screen .cell.head.pending { color: #eaf6ff; text-shadow: none; }
+.tv-screen .cell.filled { background: rgba(255,255,255,0.05); }
+.tv-screen .cell.winner {
+  background: rgba(255,46,136,0.14);
+  box-shadow: 0 0 0 1.5px #ff2e88, 0 0 18px rgba(255,46,136,0.55), inset 0 0 10px rgba(255,46,136,0.3);
+  animation: tv-neon-winner-glow 2.2s ease-in-out infinite;
+}
+@keyframes tv-neon-winner-glow {
+  0%, 100% { box-shadow: 0 0 0 1.5px #ff2e88, 0 0 18px rgba(255,46,136,0.55), inset 0 0 10px rgba(255,46,136,0.3); }
+  50% { box-shadow: 0 0 0 1.5px #ff2e88, 0 0 30px rgba(255,46,136,0.9), inset 0 0 14px rgba(255,46,136,0.5); }
+}
+.tv-screen .cell.winner .badge { background: #ff2e88; color: #fff; }
+/* Team-color gradient fade (set inline by board.js's badgeStyle()) stays
+   underneath — a light translucent dark wash (inset box-shadow, painted
+   above the background but below the label's own text/logo) takes it down
+   a notch, plus a neon edge glow layered on top. Kept light rather than a
+   full 25% dim: an already-dark team color (e.g. navy) crushes to
+   near-invisible against the dark TV background at a heavier dim. */
+.tv-screen .teamA-label,
+.tv-screen .teamB-label {
+  box-shadow: inset 0 0 0 999px rgba(6,7,13,0.12), 0 0 16px rgba(0,229,255,0.35);
+}
+/* Lighter weight than the app-wide default (800) — at that weight, white
+   text over the neon-dimmed gradient was hard to make out. A soft dark
+   shadow behind the letters keeps contrast up despite the lighter weight. */
+.tv-screen .teamA-label-text,
+.tv-screen .teamB-label {
+  font-weight: 500;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.7);
+}
+/* Quarter-result pills (Q1/Q2/Q3/Final) — same over-bold complaint as the
+   team labels above; lighten the label, amount, and score text together. */
+.tv-screen .tvq-label,
+.tv-screen .tvq-amt,
+.tv-screen .tvq-score {
+  font-weight: 500;
+}
+/* The team pill names inside those chips read blurry: .team-badge sets its
+   own font-weight (700), which wins over the rule just above, and the pill
+   was sized down (0.62em) to make room for a full team name shrinking to
+   fit. Force the icon+abbreviation form instead (already in the markup,
+   just hidden by default) and give it back some size/weight now that it
+   doesn't need to shrink to fit a long name. */
+.tv-screen .tvq-score .team-badge {
+  font-weight: 500;
+  font-size: 0.85em;
+}
+.tv-screen .tvq-score .badge-full { display: none; }
+.tv-screen .tvq-score .badge-abbr { display: inline; }
+
 /* Quarter-end celebration overlay — plays over the whole TV screen (board
    included) for a minute whenever a quarter resolves with a winner, however
    the score got there (live API poll, host typing, or phone entry). */
