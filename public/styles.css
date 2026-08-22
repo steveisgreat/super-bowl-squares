@@ -1191,6 +1191,38 @@ body.tv-fullscreen .tv-quarters { margin-bottom: 6px; }
 .tv-screen .tvq-score .badge-full { display: none; }
 .tv-screen .tvq-score .badge-abbr { display: inline; }
 
+/* Axis team panels (teamA's vertical bar along the rows, teamB's
+   horizontal bar along the columns) 25% thinner: the shared board.js
+   markup sizes both from padding + a 32px logo + the label text, none of
+   which is reachable except through CSS here, so all three are scaled to
+   75% together (logo needs !important — its size is an inline style set
+   per-render by teamLogoTag()). teamA's *horizontal* padding is its
+   thickness (the bar runs vertically); teamB's *vertical* padding is its
+   thickness (the bar runs horizontally) — only that dimension is touched
+   on each, so neither bar's length shrinks, only its depth. */
+.tv-screen .teamA-label { padding: 14px 4.5px; }
+.tv-screen .teamB-label { padding: 4.5px 14px; }
+.tv-screen .teamA-label-text,
+.tv-screen .teamB-label {
+  font-size: 0.975rem;
+}
+.tv-screen .teamA-label .team-logo,
+.tv-screen .teamB-label .team-logo {
+  --logo-size: 24px !important;
+}
+/* The TV board actually renders through .tv-board-wrap, whose own
+   responsive rules (further down this file) size the label text/logo off
+   viewport width and outrank the plain .tv-screen rules just above on
+   specificity — so the 75% scaling has to be repeated here, against those
+   exact selectors, or it's invisible in the real TV view. */
+.tv-screen .tv-board-wrap .teamA-label-text,
+.tv-screen .tv-board-wrap .teamB-label span {
+  font-size: clamp(0.975rem, 1.95vw, 2.1rem);
+}
+.tv-screen .tv-board-wrap .team-logo {
+  --logo-size: clamp(24px, 3.375vw, 48px) !important;
+}
+
 /* Quarter-end celebration overlay — plays over the whole TV screen (board
    included) for a minute whenever a quarter resolves with a winner, however
    the score got there (live API poll, host typing, or phone entry). */
