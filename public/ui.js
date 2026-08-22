@@ -414,16 +414,23 @@
   // order, until its content stops overflowing: full name -> abbreviation ->
   // abbreviation with no logo. All badges sharing a container downgrade
   // together so e.g. a matchup header reads consistently on both sides.
+  // A few px of slack rather than bare `> 0` — sub-pixel layout rounding
+  // (varies by browser/OS/DPI) can put a badge that truly just fits a
+  // couple of px on the wrong side of an exact comparison. Erring toward
+  // abbreviating a hair early is harmless; erring the other way visibly
+  // clips the last letter or two of a long name, which is the actual bug
+  // this margin exists to avoid.
+  const FIT_SLACK_PX = 4;
   function fitTeamBadges(root) {
     const wraps = (root || document).querySelectorAll('.badge-fit');
     wraps.forEach(wrap => {
       const badges = wrap.querySelectorAll('.team-badge');
       if (!badges.length) return;
       badges.forEach(b => b.classList.remove('mode-abbr', 'mode-nologo'));
-      if (wrap.scrollWidth > wrap.clientWidth + 1) {
+      if (wrap.scrollWidth > wrap.clientWidth + FIT_SLACK_PX) {
         badges.forEach(b => b.classList.add('mode-abbr'));
       }
-      if (wrap.scrollWidth > wrap.clientWidth + 1) {
+      if (wrap.scrollWidth > wrap.clientWidth + FIT_SLACK_PX) {
         badges.forEach(b => b.classList.add('mode-nologo'));
       }
     });

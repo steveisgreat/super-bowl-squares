@@ -156,6 +156,8 @@ h3 { font-family: var(--serif); font-size: 1.15rem; color: var(--text); font-wei
 
 .game-card {
   position: relative;
+  display: flex;
+  flex-direction: column;
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -186,6 +188,7 @@ h3 { font-family: var(--serif); font-size: 1.15rem; color: var(--text); font-wei
 .game-card .teams > .vs-sep { justify-self: center; }
 .game-card .status {
   display: inline-block;
+  align-self: center;
   margin-top: 5px;
   padding: 5px 12px;
   border-radius: 999px;
@@ -243,7 +246,7 @@ button.ghost.btn-delete:hover, button.ghost.btn-delete:focus-visible {
   border-color: var(--danger-border);
   background: var(--danger-soft);
 }
-.game-card-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 14px; }
+.game-card-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: auto; padding-top: 14px; }
 .game-card-actions button.icon-btn { width: 48px; height: 48px; }
 .game-card-actions button.icon-btn svg { width: 24px; height: 24px; }
 button.icon-btn.game-card-delete {
@@ -292,6 +295,10 @@ button.icon-btn.game-card-delete:hover, button.icon-btn.game-card-delete:focus-v
 }
 .status-started { background: var(--danger-soft); color: var(--danger); animation: status-glow 2.4s ease-in-out infinite; }
 .status-finished { background: var(--good-soft); color: var(--good); }
+/* Locked-but-not-kicked-off-yet: same pill/glow treatment as "In Progress",
+   swapped to amber so the room can tell "grid is set" apart from "game is
+   actually live" at a glance. */
+.status-kickoff-pending { background: var(--warn-soft); color: var(--warn); animation: status-glow 2.4s ease-in-out infinite; }
 @keyframes status-glow {
   0%, 100% { box-shadow: 0 0 0 0 currentColor; }
   50% { box-shadow: 0 0 10px 1px currentColor; }

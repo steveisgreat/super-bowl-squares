@@ -77,7 +77,21 @@
   // "Picking Squares" status while a game is in the picking phase.
   const PICKING_FX_COLORS = ['#FF3366', '#00FFCC', '#FFD700', '#FF6600', '#9D00FF', '#00FF66', '#FF0055', '#00E5FF'];
 
+  // The grid is routinely locked (status -> 'started') well ahead of the
+  // real kickoff once squares fill up — while that's true, the card should
+  // read "Kickoff <time>", not "In Progress", since nothing is actually
+  // live yet.
+  function kickoffPending(g) {
+    if (g.status !== 'started' || !g.kickoffTime) return false;
+    const ms = Date.parse(g.kickoffTime);
+    return !isNaN(ms) && ms > Date.now();
+  }
+
   function statusMarkup(g) {
+    if (kickoffPending(g)) {
+      const timeTxt = new Date(g.kickoffTime).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+      return `<span class="status status-kickoff-pending">Kickoff ${escapeHtml(timeTxt)}</span>`;
+    }
     if (g.status !== 'picking') {
       return `<span class="status status-${g.status}">${statusLabel(g.status)}</span>`;
     }
@@ -304,7 +318,7 @@
     // phone setting up a new pool while the TV sits on Home), and there's no
     // push channel — so poll and re-render Home if the saved-games list has
     // changed since we last drew it.
-    const fingerprint = games.map(g => g.id + ':' + g.status).sort().join('|');
+    const fingerprint = games.map(g => g.id + ':' + g.status + ':' + kickoffPending(g)).sort().join('|');
     SBS.setManagedInterval(async () => {
       let latest;
       try {
@@ -314,7 +328,7 @@
       } catch (e) {
         return;
       }
-      const latestFingerprint = latest.map(g => g.id + ':' + g.status).sort().join('|');
+      const latestFingerprint = latest.map(g => g.id + ':' + g.status + ':' + kickoffPending(g)).sort().join('|');
       if (latestFingerprint !== fingerprint && SBS.currentScreen() === 'home') {
         SBS.go({ screen: 'home' });
       }
