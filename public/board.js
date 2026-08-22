@@ -5,7 +5,7 @@
   'use strict';
 
   const SBS = window.SBS = window.SBS || {};
-  const { el, escapeHtml, teamLogoTag, teamColor, readableTextColor, teamBadge } = SBS.ui;
+  const { el, escapeHtml, teamLogoTag, teamColor, readableTextColor, teamBadge, teamStyle } = SBS.ui;
 
   // "Qn" for regulation, "OT" (or "2OT", etc.) once the game runs past four
   // quarters — ESPN numbers overtime periods 5, 6, ...
@@ -141,6 +141,19 @@
     teamBLabel.style.cssText = badgeStyle(game, 'B', 'x');
     outer.appendChild(teamBLabel);
 
+    // Full team names (e.g. "Washington Commanders") routinely don't fit in
+    // these narrow axis bars — teamA's runs vertically up a column-width
+    // strip, teamB's horizontally across a row-height one. Fall back to the
+    // same abbreviation the rest of the app already uses for tight spaces,
+    // but only once the full name actually overflows its bar (checked below,
+    // after layout, since that's the only reliable way to know).
+    function fitAxisLabel(labelEl, textEl, side, vertical) {
+      const overflowing = vertical
+        ? labelEl.scrollHeight > labelEl.clientHeight + 1
+        : labelEl.scrollWidth > labelEl.clientWidth + 1;
+      if (overflowing) textEl.textContent = teamStyle(game, side).abbr;
+    }
+
     const scroll = el('div', 'board-scroll');
     const table = el('div', 'board-table');
 
@@ -195,6 +208,9 @@
       teamALabel.style.marginTop = ch + 'px';
       teamALabel.style.height = `calc(100% - ${ch}px)`;
     }
+
+    fitAxisLabel(teamALabel, teamALabel.querySelector('.teamA-label-text'), 'A', true);
+    fitAxisLabel(teamBLabel, teamBLabel.querySelector('span'), 'B', false);
   }
 
   SBS.board = { renderPickBoard, renderFullBoard, renderLiveScoreBar };

@@ -152,14 +152,14 @@
         const statusCls = 'pt-status' + (game.status === 'started' ? ' is-live' : '');
         tickerHtml = `
           <div class="player-ticker">
-            <div class="pt-team">
+            <div class="pt-team badge-fit">
               ${teamBadge(game, 'A', { logoSize: 20, cls: 'team-badge-sm' })}
               <div class="pt-pts">${scoreA}</div>
             </div>
             <div class="pt-mid">
               <div class="${statusCls}">${statusTxt}</div>
             </div>
-            <div class="pt-team">
+            <div class="pt-team badge-fit">
               ${teamBadge(game, 'B', { logoSize: 20, cls: 'team-badge-sm' })}
               <div class="pt-pts">${scoreB}</div>
             </div>
