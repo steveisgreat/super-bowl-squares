@@ -246,7 +246,7 @@ button.ghost.btn-delete:hover, button.ghost.btn-delete:focus-visible {
   border-color: var(--danger-border);
   background: var(--danger-soft);
 }
-.game-card-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: auto; padding-top: 14px; }
+.game-card-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: auto; padding-top: 26px; }
 .game-card-actions button.icon-btn { width: 48px; height: 48px; }
 .game-card-actions button.icon-btn svg { width: 24px; height: 24px; }
 button.icon-btn.game-card-delete {
