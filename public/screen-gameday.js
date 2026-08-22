@@ -704,7 +704,12 @@
     function tickKickoffCountdown() {
       const game = lastGame;
       const kickoffMs = game && game.kickoffTime ? Date.parse(game.kickoffTime) : NaN;
-      if (!game || isNaN(kickoffMs) || game.status === 'started' || game.status === 'finished') {
+      // Deliberately not gated on game.status: the grid is routinely locked
+      // (status -> 'started') well ahead of the actual kickoff once squares
+      // fill up, and the countdown should keep counting down through that —
+      // only real kickoff time (or a finished game, which is never still
+      // pre-kickoff) makes it disappear.
+      if (!game || isNaN(kickoffMs) || game.status === 'finished') {
         kickoffCountdown.classList.add('hidden');
         return;
       }
