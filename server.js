@@ -129,7 +129,7 @@ async function startHttpsServer() {
 
 function logStartup() {
   console.log('');
-  console.log('  $uper-$quares server is running!');
+  console.log('  Super-Squares server is running!');
   console.log('');
   console.log(`  On this PC:      http://localhost:${PORT}`);
   const ips = localIPs();

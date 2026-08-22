@@ -1,4 +1,4 @@
-# Cloud Migration Plan — $uper-$quares
+# Cloud Migration Plan — Super-Squares
 
 Moving from a LAN-hosted Node server to Vercel + Neon, while keeping the local/LAN
 version working from the same codebase.
@@ -53,7 +53,7 @@ direct string will exhaust the connection limit. Store it in `.env.local` and ad
 
 ### 0.4 Link Vercel to GitHub — `Human` — ~10 min
 
-Sign in to Vercel with GitHub and import `steveisgreat/super-bowl-squares`.
+Sign in to Vercel with GitHub and import `steveisgreat/super-squares`.
 
 Vercel **always deploys on project creation** — there is no import-without-deploy option.
 That first deploy will be broken, and that is expected: there is no `vercel.json` yet, so

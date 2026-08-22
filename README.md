@@ -1,4 +1,4 @@
-# $uper-$quares
+# Super-Squares
 
 A self-hosted squares grid game for any sport — NFL, NBA, or a custom "Other" matchup. Runs on your PC, played from any device (iPad, phone, laptop) on the same WiFi network — great for AirPlaying to a TV. You can run any number of games at once, across any mix of sports and dates.
 

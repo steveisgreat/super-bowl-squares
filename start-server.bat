@@ -1,7 +1,7 @@
 @echo off
 cd /d "%~dp0"
-title $uper-$quares - Server
-echo Starting $uper-$quares server...
+title Super-Squares - Server
+echo Starting Super-Squares server...
 echo.
 node server.js
 echo.

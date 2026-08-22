@@ -1,5 +1,5 @@
 {
-  "name": "super-square-pools",
+  "name": "super-squares",
   "version": "1.0.0",
   "description": "Local-network squares grid game for any sport",
   "main": "server.js",
