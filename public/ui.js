@@ -233,6 +233,26 @@
     return { setup: 'Setup', picking: 'Picking Squares', started: 'In Progress', finished: 'Finished' }[s] || s;
   }
 
+  // "2026-01-26T18:00Z" -> "Sun, Jan 26 · 1:00 PM" in the viewer's local time.
+  function formatKickoffTime(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
+      + ' · ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  }
+
+  // Kickoff time is only meaningful before the game actually gets underway —
+  // once status flips to 'started' (or later, 'finished'), the live score /
+  // final result tells the real story, so the notice disappears rather than
+  // sitting there stale.
+  function kickoffNotice(game) {
+    if (!game || !game.kickoffTime) return '';
+    if (game.status === 'started' || game.status === 'finished') return '';
+    const when = formatKickoffTime(game.kickoffTime);
+    return when ? `Kickoff: ${escapeHtml(when)}` : '';
+  }
+
   const LEAGUE_LABELS = { nfl: 'NFL', nba: 'NBA', other: 'Other' };
   function leagueLabel(league) { return LEAGUE_LABELS[league] || 'Other'; }
 
@@ -494,6 +514,7 @@
     el, escapeHtml, money, overlayEl, fullscreen, keepScreenAwake,
     showModal, showConfirm, showAlert, showChoice, showPasswordPrompt,
     topbar, statusLabel, leagueLabel, leagueBadge, isTvBrowser, isPhone,
+    formatKickoffTime, kickoffNotice,
     teamMeta, teamStyle, applyTeamColors, resetTeamColors, teamLogoTag,
     teamColor, readableTextColor, teamBadge, fitTeamBadges, teamAbbr, shadeColor,
     TV_ICON, PHONE_ICON, PEOPLE_ICON

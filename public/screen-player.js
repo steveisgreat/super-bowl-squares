@@ -128,7 +128,8 @@
       const live = game.liveScore;
       let tickerHtml = '';
       if (game.status === 'picking' || game.status === 'setup') {
-        tickerHtml = `<div class="player-ticker-pending">Squares are being claimed &mdash; the board locks in soon.</div>`;
+        const kickoff = SBS.ui.kickoffNotice(game);
+        tickerHtml = `<div class="player-ticker-pending">Squares are being claimed &mdash; the board locks in soon.${kickoff ? ' ' + kickoff : ''}</div>`;
       } else {
         const computed = computeGame(game);
         const auto = isAutoScored(game);

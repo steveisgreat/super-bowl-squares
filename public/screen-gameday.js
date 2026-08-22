@@ -234,7 +234,7 @@
     playerBtn.type = 'button';
     if (phone) { playerBtn.setAttribute('aria-label', 'Player View QR'); playerBtn.title = 'Player View QR'; }
     playerBtn.addEventListener('click', () => SBS.playerView.showPlayerLink(game.id));
-    const headerMeta = [SBS.ui.leagueBadge(game.league), game.description ? escapeHtml(game.description) : (game.gameDate || '')].filter(Boolean).join(' &middot; ');
+    const headerMeta = [SBS.ui.leagueBadge(game.league), game.description ? escapeHtml(game.description) : (game.gameDate || ''), SBS.ui.kickoffNotice(game)].filter(Boolean).join(' &middot; ');
     app.appendChild(topbar('', [manageBtn, tvBtn, phoneBtn, playerBtn], { hideIcon: true, homeLeft: true }));
     const main = el('div', 'main');
     app.appendChild(main);

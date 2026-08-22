@@ -135,6 +135,7 @@
       </div>
       ${g.description ? `<div class="game-card-desc">${escapeHtml(g.description)}</div>` : ''}
       <div class="teams badge-fit">${teamBadge(g, 'A', { logoSize: 18, cls: 'team-badge-sm' })}<span class="vs-sep">vs</span>${teamBadge(g, 'B', { logoSize: 18, cls: 'team-badge-sm' })}</div>
+      ${SBS.ui.kickoffNotice(g) ? `<div class="game-card-kickoff">${SBS.ui.kickoffNotice(g)}</div>` : ''}
       ${statusMarkup(g)}
       ${isTv ? '' : `
       <div class="game-card-actions">
@@ -437,6 +438,7 @@
     `;
 
     let league = editGame ? (editGame.league || 'nfl') : 'nfl';
+    let selectedKickoff = editGame ? (editGame.kickoffTime || null) : null;
 
     function currentPreviewGame() {
       return {
@@ -502,6 +504,7 @@
     async function loadGamesForDate(dateVal) {
       gamesCard.innerHTML = '';
       gamesCard.classList.add('hidden');
+      selectedKickoff = null;
       if (league === 'other') return;
       let games;
       try {
@@ -523,16 +526,28 @@
         <label>Games</label>
         <select id="f-games-picker">
           <option value="">Select a game…</option>
-          ${games.map((g, i) => `<option value="${i}">${escapeHtml(g.teamA)} @ ${escapeHtml(g.teamB)}</option>`).join('')}
+          ${games.map((g, i) => `<option value="${i}">${escapeHtml(g.teamA)} @ ${escapeHtml(g.teamB)}${g.date ? ' — ' + escapeHtml(SBS.ui.formatKickoffTime(g.date)) : ''}</option>`).join('')}
         </select>
         <p class="games-picker-msg">Auto Fetch Score Enabled</p>
       `;
       gamesCard.classList.remove('hidden');
       const select = gamesCard.querySelector('#f-games-picker');
       const detailsBtn = appendDetailsButton(select, games);
+      // Re-selecting an already-edited game re-syncs its kickoff time with
+      // whatever the picker shows now, without forcing the host to reopen
+      // the dropdown themselves.
+      if (editGame) {
+        const matchIdx = games.findIndex(g => g.teamA === editGame.teamA && g.teamB === editGame.teamB);
+        if (matchIdx !== -1) {
+          select.value = String(matchIdx);
+          selectedKickoff = games[matchIdx].date || null;
+          detailsBtn.disabled = false;
+        }
+      }
       select.addEventListener('change', (e) => {
         const g = games[e.target.value];
         detailsBtn.disabled = !g;
+        selectedKickoff = g ? (g.date || null) : null;
         if (!g) return;
         form.querySelector('#f-teamA').value = g.teamA;
         form.querySelector('#f-teamB').value = g.teamB;
@@ -634,7 +649,8 @@
         pickMode,
         autoCutoffEnabled: cutoffEnabled,
         autoCutoffTime: cutoffEnabled ? form.querySelector('#f-cutoff').value : null,
-        simulation: simulationEnabled
+        simulation: simulationEnabled,
+        kickoffTime: selectedKickoff
       });
       if (league === 'other') {
         game.teamAColor = form.querySelector('#f-teamA-color').value;

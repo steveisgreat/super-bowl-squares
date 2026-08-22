@@ -195,8 +195,10 @@ async function getTodaysGames(ymd, league) {
     if (!teamA || !teamB) return null;
     // `raw` is ESPN's whole event object for this matchup, unmodified — kept
     // only so the setup screen's "Details" button can show the host exactly
-    // what the API returned, for troubleshooting a bad match.
-    return { teamA, teamB, raw: ev };
+    // what the API returned, for troubleshooting a bad match. `date` is
+    // ESPN's scheduled kickoff time (ISO string, UTC) for the "Games" picker
+    // to store on the game and for display screens to show pre-kickoff.
+    return { teamA, teamB, date: ev.date || null, raw: ev };
   }).filter(Boolean);
 }
 
