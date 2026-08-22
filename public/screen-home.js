@@ -135,7 +135,7 @@
       </div>
       ${g.description ? `<div class="game-card-desc">${escapeHtml(g.description)}</div>` : ''}
       <div class="teams badge-fit">${teamBadge(g, 'A', { logoSize: 18, cls: 'team-badge-sm' })}<span class="vs-sep">vs</span>${teamBadge(g, 'B', { logoSize: 18, cls: 'team-badge-sm' })}</div>
-      ${SBS.ui.kickoffNotice(g) ? `<div class="game-card-kickoff">${SBS.ui.kickoffNotice(g)}</div>` : ''}
+      ${g.kickoffTime ? `<div class="game-card-kickoff">Kickoff: ${escapeHtml(SBS.ui.formatKickoffTime(g.kickoffTime))}</div>` : ''}
       ${statusMarkup(g)}
       ${isTv ? '' : `
       <div class="game-card-actions">
