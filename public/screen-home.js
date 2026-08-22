@@ -551,6 +551,7 @@
         if (!g) return;
         form.querySelector('#f-teamA').value = g.teamA;
         form.querySelector('#f-teamB').value = g.teamB;
+        form.querySelector('#f-description').value = `${g.teamA} @ ${g.teamB}`;
         refreshPreviews();
       });
     }
