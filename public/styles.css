@@ -1,20 +1,22 @@
-/* Midnight Blueprint — Blueprint's dark counterpart in the Appraiser Suite's
-   theme system. Surfaces sit ABOVE the page rather than below it (panel/
-   panel2/panel3 step light-to-dark relative to bg), and --accent is a light
-   blue that needs dark text on top of it — see --on-accent below. */
+/* Neon Glass — glassmorphism/neon-esports counterpart to the original
+   Midnight Blueprint palette. Same token names and roles (surfaces sit
+   ABOVE the page; --accent needs dark text on top — see --on-accent), just
+   a deeper near-black base, cyan-tinted glass borders, and a saturated
+   cyan accent in place of the original pastel blue. Applies everywhere —
+   every screen shares these tokens, not just the TV Grid View. */
 :root {
-  --bg: #0b0f13;
-  --panel: #1b242d;
-  --panel2: #232e38;
-  --panel3: #2e3b46;
-  --border: #33414d;
-  --border-strong: #4a5b69;
+  --bg: #06070d;
+  --panel: #12171f;
+  --panel2: #171f2b;
+  --panel3: #202a38;
+  --border: rgba(0, 229, 255, 0.18);
+  --border-strong: rgba(0, 229, 255, 0.34);
   --text: #edf2f6;
   --muted: #b3c1cd;
-  --accent: #8dbde8;
-  --accent-hi: #abd0f0;
-  --accent-soft: #1b2a38;
-  --on-accent: #0e141a;
+  --accent: #00e5ff;
+  --accent-hi: #6df1ff;
+  --accent-soft: rgba(0, 229, 255, 0.12);
+  --on-accent: #06070d;
   --accent2: #93c9aa;
   --danger: #ef4444;
   --danger-soft: #33120f;
@@ -28,9 +30,9 @@
   --teamB: #4dabf7;
   --teamB-alt: #a5d8ff;
   --radius: 6px;
-  --shadow-card: 0 1px 2px rgb(0 0 0 / 40%), 0 4px 14px rgb(0 0 0 / 30%);
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 40%), 0 4px 14px rgb(0 0 0 / 30%), 0 0 24px rgba(0, 229, 255, 0.06);
   --shadow-pop: 0 10px 30px rgb(0 0 0 / 50%);
-  --chrome-bg: #070a0d;
+  --chrome-bg: #050609;
   --chrome-fg: #b3c1cd;
   --chrome-dim: #8b9aa8;
   --on-chrome: #f4f7fa;
@@ -55,6 +57,16 @@ html, body {
   -webkit-tap-highlight-color: transparent;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
+}
+/* Same ambient glow the TV Grid View uses, now behind every screen — two
+   soft, fixed radial blobs well below the content so they read as
+   atmosphere, not a background image. */
+body {
+  background:
+    radial-gradient(ellipse 900px 500px at 15% -10%, rgba(0,229,255,0.08), transparent 60%),
+    radial-gradient(ellipse 900px 600px at 100% 110%, rgba(255,46,136,0.06), transparent 60%),
+    var(--bg);
+  background-attachment: fixed;
 }
 
 #app {
