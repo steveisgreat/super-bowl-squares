@@ -420,17 +420,32 @@
   // abbreviating a hair early is harmless; erring the other way visibly
   // clips the last letter or two of a long name, which is the actual bug
   // this margin exists to avoid.
+  //
+  // Some layouts (the score-entry team/input row, the player ticker) put
+  // team A and team B in their own separate `.badge-fit` wraps side by side
+  // instead of one shared wrap, so each side would otherwise measure its own
+  // space and could downgrade independently — team A staying "Los Angeles
+  // Rams" while team B next to it shrinks to "LAR". Group wraps by their
+  // immediate parent so a sibling pair like that is judged as one unit: if
+  // either side needs to shrink, both do, at the same step.
   const FIT_SLACK_PX = 4;
   function fitTeamBadges(root) {
-    const wraps = (root || document).querySelectorAll('.badge-fit');
+    const wraps = Array.from((root || document).querySelectorAll('.badge-fit'));
+    const groups = new Map();
     wraps.forEach(wrap => {
-      const badges = wrap.querySelectorAll('.team-badge');
+      const key = wrap.parentElement || wrap;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(wrap);
+    });
+    groups.forEach(group => {
+      const badges = group.flatMap(wrap => Array.from(wrap.querySelectorAll('.team-badge')));
       if (!badges.length) return;
       badges.forEach(b => b.classList.remove('mode-abbr', 'mode-nologo'));
-      if (wrap.scrollWidth > wrap.clientWidth + FIT_SLACK_PX) {
+      const overflows = () => group.some(wrap => wrap.scrollWidth > wrap.clientWidth + FIT_SLACK_PX);
+      if (overflows()) {
         badges.forEach(b => b.classList.add('mode-abbr'));
       }
-      if (wrap.scrollWidth > wrap.clientWidth + FIT_SLACK_PX) {
+      if (overflows()) {
         badges.forEach(b => b.classList.add('mode-nologo'));
       }
     });
