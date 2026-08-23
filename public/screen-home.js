@@ -150,7 +150,7 @@
       ${g.description ? `<div class="game-card-desc">${escapeHtml(g.description)}</div>`
         : `<div class="game-card-desc">${escapeHtml(g.teamA || '')} @ ${escapeHtml(g.teamB || '')}</div>`}
       <div class="teams">${teamBadge(g, 'A', { logoSize: 18, cls: 'team-badge-sm mode-abbr' })}<span class="vs-sep">vs</span>${teamBadge(g, 'B', { logoSize: 18, cls: 'team-badge-sm mode-abbr' })}</div>
-      ${g.kickoffTime ? `<div class="game-card-kickoff">Kickoff: ${escapeHtml(SBS.ui.formatKickoffTime(g.kickoffTime))}</div>` : ''}
+      <div class="game-card-kickoff">${g.kickoffTime ? `Kickoff: ${escapeHtml(SBS.ui.formatKickoffTime(g.kickoffTime))}` : ''}</div>
       ${statusMarkup(g)}
       ${isTv ? '' : `
       <div class="game-card-actions">
