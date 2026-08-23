@@ -690,12 +690,13 @@
     let lastGame = null;
 
     // ---- Score-change axis ripple ----
-    // Whenever the live score changes, the axis number matching each
-    // team's new last-digit score — the actual square that would win if
-    // the game ended right now — fires five staggered rings outward, so
-    // the room's eye is drawn straight to it without the number itself
-    // moving. `null` (not yet seen a score) never triggers it, only an
-    // actual a/b change once one has been seen.
+    // Whenever the live score changes (either team), the axis number
+    // matching EACH team's current last digit — the square that would
+    // win if the game ended right now — fires five staggered rings, on
+    // both axes together, so the room's eye is drawn straight to it
+    // without the number itself moving. `null` (not yet seen a score at
+    // all) never triggers it, only an actual change once a first value
+    // has been seen.
     let lastLiveScoreKey = null;
     function rippleAxisCell(cell) {
       if (!cell) return;
@@ -711,18 +712,17 @@
       const live = game.liveScore;
       if (!live || live.a === null || live.a === undefined || live.b === null || live.b === undefined) return;
       if (!game.axisX || !game.axisY) return;
+
       const key = live.a + '-' + live.b;
       const firstSeen = lastLiveScoreKey === null;
-      if (key === lastLiveScoreKey) return;
+      const changed = key !== lastLiveScoreKey;
       lastLiveScoreKey = key;
-      if (firstSeen) return;
+      if (!changed || firstSeen) return;
 
       const colIdx = game.axisX.indexOf(live.b % 10);
       const rowIdx = game.axisY.indexOf(live.a % 10);
-      const xCells = boardWrap.querySelectorAll('.cell.head.x');
-      const yCells = boardWrap.querySelectorAll('.cell.head.y');
-      rippleAxisCell(xCells[colIdx]);
-      rippleAxisCell(yCells[rowIdx]);
+      rippleAxisCell(boardWrap.querySelectorAll('.cell.head.x')[colIdx]);
+      rippleAxisCell(boardWrap.querySelectorAll('.cell.head.y')[rowIdx]);
     }
 
     // "Kickoff in 1d 03:22:07" — days only shown once there's more than a

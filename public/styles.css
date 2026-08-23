@@ -1248,12 +1248,13 @@ body.tv-fullscreen .tv-quarters { margin-bottom: 6px; }
   --logo-size: clamp(24px, 3.375vw, 48px) !important;
 }
 
-/* Score-change axis ripple — five staggered rings converge inward onto
-   the axis number matching each team's new last-digit score (see
-   bumpAxisCells() in screen-gameday.js), then remove themselves. Each
-   ring starts big and faint outside the cell, closes in to the cell's
-   own size at peak visibility, then keeps shrinking past it as it fades
-   — the number itself never moves, only the rings closing in on it. */
+/* Score-change axis ripple — five staggered rings pulse on the axis
+   number matching each team's new last-digit score (see bumpAxisCells()
+   in screen-gameday.js), then remove themselves. Capped at the cell's
+   own size rather than overshooting past its edge: each ring starts at
+   full cell size, shrinks, grows back out to full cell size, then fades
+   away at that size — the number itself never moves, only the ring
+   breathing in place around it. */
 .tv-screen .cell.head { position: relative; overflow: visible; }
 .tv-screen .score-ring {
   position: absolute;
@@ -1262,16 +1263,17 @@ body.tv-fullscreen .tv-quarters { margin-bottom: 6px; }
   border: 2px solid #00e5ff;
   opacity: 0;
   pointer-events: none;
-  animation: tv-score-ripple 1.6s ease-out;
+  animation: tv-score-ripple 1.6s ease-in-out;
 }
 .tv-screen .score-ring.r2 { animation-delay: 0.6s; }
 .tv-screen .score-ring.r3 { animation-delay: 1.2s; }
 .tv-screen .score-ring.r4 { animation-delay: 1.8s; }
 .tv-screen .score-ring.r5 { animation-delay: 2.4s; }
 @keyframes tv-score-ripple {
-  0% { transform: scale(1.9); opacity: 0; }
-  55% { transform: scale(1); opacity: 0.9; }
-  100% { transform: scale(0.7); opacity: 0; }
+  0% { transform: scale(1); opacity: 0.9; }
+  40% { transform: scale(0.5); opacity: 0.9; }
+  70% { transform: scale(1); opacity: 0.9; }
+  100% { transform: scale(1); opacity: 0; }
 }
 
 /* Quarter-end celebration overlay — plays over the whole TV screen (board
