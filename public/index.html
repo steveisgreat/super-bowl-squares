@@ -2,7 +2,28 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<!-- iOS Safari, when it opens this page from the Camera app's QR scanner
+     rather than as a normal tab, sometimes lays out the very first paint
+     zoomed out against its old ~980px desktop-width viewport, and only
+     recomputes the real device-width layout once a scroll gesture forces
+     it to reconcile the visual and layout viewports — exactly the "opens
+     too wide, then snaps to the right size once I scroll" symptom.
+     minimum-scale=1.0 heads off part of that (a known WebKit quirk when
+     user-scalable=no is set without it); the scroll nudge below forces the
+     rest of the reconciliation immediately, standing in for the manual
+     scroll that already fixes it by hand. -->
+<script>
+(function () {
+  function nudgeScroll() {
+    if (window.scrollY !== 0) return;
+    window.scrollTo(0, 1);
+    requestAnimationFrame(function () { window.scrollTo(0, 0); });
+  }
+  window.addEventListener('load', nudgeScroll);
+  window.addEventListener('pageshow', nudgeScroll);
+})();
+</script>
 <!-- Added to the Home Screen, the app launches without Safari's toolbars —
      the most reliable way to get a chrome-free grid on an AirPlayed iPad. -->
 <meta name="apple-mobile-web-app-capable" content="yes">
