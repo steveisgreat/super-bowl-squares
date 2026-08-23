@@ -727,10 +727,20 @@
       const hostRect = boardOuter.getBoundingClientRect();
       const outerRect = outer.getBoundingClientRect();
       const cornerRect = corner.getBoundingClientRect();
-      const w = cornerRect.right - outerRect.left;
-      const h = cornerRect.bottom - outerRect.top;
-      cornerQrBig.style.left = (outerRect.left - hostRect.left) + 'px';
-      cornerQrBig.style.top = (outerRect.top - hostRect.top) + 'px';
+      // outerRect is .board-grid-outer's border box, which includes its own
+      // neon border + padding ring (see .tv-screen .board-grid-outer). Start
+      // the QR box inside that ring — at the outer grid's actual content
+      // edge — instead of at its border-box edge, so that ring stays visible
+      // all the way around instead of getting painted over by the QR panel.
+      const outerStyle = getComputedStyle(outer);
+      const insetX = parseFloat(outerStyle.borderLeftWidth) + parseFloat(outerStyle.paddingLeft);
+      const insetY = parseFloat(outerStyle.borderTopWidth) + parseFloat(outerStyle.paddingTop);
+      const left = outerRect.left + insetX;
+      const top = outerRect.top + insetY;
+      const w = cornerRect.right - left;
+      const h = cornerRect.bottom - top;
+      cornerQrBig.style.left = (left - hostRect.left) + 'px';
+      cornerQrBig.style.top = (top - hostRect.top) + 'px';
       cornerQrBig.style.width = w + 'px';
       cornerQrBig.style.height = h + 'px';
       // Padding as a percentage of this box's own size, not CSS `%` (which

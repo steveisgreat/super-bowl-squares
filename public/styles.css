@@ -1711,7 +1711,9 @@ body.tv-fullscreen .tv-meta { font-size: 1.5rem; }
   position: absolute;
   z-index: 3;
   background: var(--panel);
-  border-radius: var(--radius) 0 0 0;
+  border: 1px solid rgba(0,229,255,0.3);
+  border-radius: var(--radius);
+  box-shadow: 0 0 18px rgba(0,229,255,0.35);
   box-sizing: border-box;
   display: flex;
   align-items: center;
