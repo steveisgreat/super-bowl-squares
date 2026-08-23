@@ -10,15 +10,26 @@
      it to reconcile the visual and layout viewports — exactly the "opens
      too wide, then snaps to the right size once I scroll" symptom.
      minimum-scale=1.0 heads off part of that (a known WebKit quirk when
-     user-scalable=no is set without it); the scroll nudge below forces the
-     rest of the reconciliation immediately, standing in for the manual
-     scroll that already fixes it by hand. -->
+     user-scalable=no is set without it).
+     The nudge below stands in for that manual scroll. It only ever
+     reproduced on pages short enough to have nothing to scroll (e.g. the
+     player view with a single name in the dropdown) — a plain
+     scrollTo(0,1) is a no-op with no overflow to move into, and never
+     triggered the reconciliation on exactly the pages that needed it. So
+     it forces a sliver of extra height first, scrolls into that, then
+     restores the real height. -->
 <script>
 (function () {
   function nudgeScroll() {
     if (window.scrollY !== 0) return;
-    window.scrollTo(0, 1);
-    requestAnimationFrame(function () { window.scrollTo(0, 0); });
+    var docEl = document.documentElement;
+    var originalHeight = docEl.style.height;
+    docEl.style.height = (window.innerHeight + 100) + 'px';
+    window.scrollTo(0, 50);
+    setTimeout(function () {
+      window.scrollTo(0, 0);
+      docEl.style.height = originalHeight;
+    }, 0);
   }
   window.addEventListener('load', nudgeScroll);
   window.addEventListener('pageshow', nudgeScroll);
