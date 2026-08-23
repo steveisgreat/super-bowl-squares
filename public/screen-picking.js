@@ -220,12 +220,17 @@
 
     async function startGame() {
       // Latched: without this a double-tap (or a stray timer) could fire two
-      // saves that each generate their own axis numbers.
+      // saves that each generate their own axis numbers. Reset on both the
+      // success and failure paths — this flag is module-level (so it
+      // survives a re-render mid-save), which means leaving it stuck `true`
+      // after a successful lock would silently no-op every future game's
+      // "Finish Picking" button for the rest of the browser session.
       if (lockInFlight) return;
       lockInFlight = true;
       lockGame(game);
       try {
         const saved = await SBS.api.saveGame(game);
+        lockInFlight = false;
         SBS.go({ screen: 'board', game: saved });
       } catch (e) {
         lockInFlight = false;
