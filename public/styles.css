@@ -1248,10 +1248,12 @@ body.tv-fullscreen .tv-quarters { margin-bottom: 6px; }
   --logo-size: clamp(24px, 3.375vw, 48px) !important;
 }
 
-/* Score-change axis ripple — five staggered rings expand outward from
+/* Score-change axis ripple — five staggered rings converge inward onto
    the axis number matching each team's new last-digit score (see
-   bumpAxisCells() in screen-gameday.js), then remove themselves. The
-   number itself never moves, only the rings around it. */
+   bumpAxisCells() in screen-gameday.js), then remove themselves. Each
+   ring starts big and faint outside the cell, closes in to the cell's
+   own size at peak visibility, then keeps shrinking past it as it fades
+   — the number itself never moves, only the rings closing in on it. */
 .tv-screen .cell.head { position: relative; overflow: visible; }
 .tv-screen .score-ring {
   position: absolute;
@@ -1267,8 +1269,9 @@ body.tv-fullscreen .tv-quarters { margin-bottom: 6px; }
 .tv-screen .score-ring.r4 { animation-delay: 1.8s; }
 .tv-screen .score-ring.r5 { animation-delay: 2.4s; }
 @keyframes tv-score-ripple {
-  0% { transform: scale(1); opacity: 0.9; }
-  100% { transform: scale(1.9); opacity: 0; }
+  0% { transform: scale(1.9); opacity: 0; }
+  55% { transform: scale(1); opacity: 0.9; }
+  100% { transform: scale(0.7); opacity: 0; }
 }
 
 /* Quarter-end celebration overlay — plays over the whole TV screen (board
