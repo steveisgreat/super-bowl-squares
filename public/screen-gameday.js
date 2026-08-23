@@ -605,6 +605,7 @@
 
     const boardWrap = el('div', 'tv-board-wrap');
     screenEl.appendChild(boardWrap);
+    loadCornerQr(id);
 
     // Controls fade out so the television shows nothing but the grid; any tap
     // or mouse move brings them back.
@@ -688,6 +689,34 @@
     let finalSummaryBurstTimer = null;
     let finalSummarySignature = null;
     let lastGame = null;
+
+    // ---- Corner QR: scan-to-view-your-squares ----
+    // Fills the grid's otherwise-blank top-left cell with a QR straight to
+    // the read-only player companion view (see screen-player.js's own
+    // showPlayerLink, which this mirrors inline instead of behind a modal).
+    // Fetched once per TV session — the LAN address doesn't change mid-game —
+    // then reapplied after every renderFullBoard, since that call wipes and
+    // rebuilds boardWrap's whole DOM including the corner cell.
+    let cornerQrHtml = '';
+    function applyCornerQr() {
+      if (!cornerQrHtml) return;
+      const corner = boardWrap.querySelector('.cell.head.corner');
+      if (corner) corner.innerHTML = cornerQrHtml;
+    }
+    async function loadCornerQr(gameId) {
+      try {
+        const hosts = await SBS.api.getHosts();
+        const path = `${location.pathname}#player-${gameId}`;
+        const url = hosts.addresses.length
+          ? `${hosts.httpsReady ? 'https' : 'http'}://${hosts.addresses[0]}:${hosts.port}${path}`
+          : `${location.origin}${path}`;
+        const svg = window.QRCode.toSvg(url, 200);
+        cornerQrHtml = `<div class="tv-corner-qr">${svg}</div>`;
+        applyCornerQr();
+      } catch (e) {
+        // Best-effort — the corner just stays blank if this fails.
+      }
+    }
 
     // ---- Score-change axis ripple ----
     // Whenever the live score changes (either team), the axis number
@@ -1113,6 +1142,7 @@
             lastBoardSignature = boardSignature;
             SBS.board.renderFullBoard(boardWrap, game, computed, null);
             fitTeamBadges(boardWrap);
+            applyCornerQr();
           }
           return;
         }
@@ -1187,6 +1217,7 @@
           lastBoardSignature = boardSignature;
           SBS.board.renderFullBoard(boardWrap, game, computed, liveHighlight);
           fitTeamBadges(boardWrap);
+          applyCornerQr();
         }
         bumpAxisCells(game);
       } catch (e) {
