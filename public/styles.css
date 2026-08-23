@@ -1673,36 +1673,51 @@ body.tv-fullscreen .tv-meta { font-size: 1.5rem; }
   .tv-board-wrap .cell .name-txt { font-size: clamp(0.95rem, 1.75vw, 1.85rem); }
 }
 
-.tv-board-wrap {
+/* Positioned anchor for the corner QR (below) — it needs to sit outside
+   .tv-board-wrap, which renderFullBoard wipes and rebuilds wholesale on
+   every board change, so it survives untouched across rebuilds. */
+.tv-board-outer {
+  position: relative;
   flex: 1 1 auto;
   min-height: 0;
+  display: flex;
+}
+.tv-board-wrap {
+  width: 100%;
   display: flex;
   align-items: stretch;
   justify-content: center;
 }
 .tv-board-wrap .board-grid-outer { width: 100%; height: 100%; }
 .tv-board-wrap .board-scroll { overflow: hidden; padding-bottom: 0; }
-/* The corner cell: match the surrounding cells' panel background (not the
-   darker screen background) and paint over the 1px grid-gap seam on its two
-   visible edges (right/bottom — the other two sit flush against the table's
-   own edge already) so no border line survives around it. Its content is
-   the scan-to-view-your-squares QR, injected by screen-gameday.js. */
+/* The table's own blank corner cell: match the surrounding cells' panel
+   background (not the darker screen background) and paint over the 1px
+   grid-gap seam on its two visible edges (right/bottom — the other two sit
+   flush against the table's own edge already) so no border line survives
+   around it. Left fully blank now — it's just the bottom-right slice of
+   the bigger .tv-corner-qr-big rectangle sitting on top of it. */
 .tv-board-wrap .cell.head.corner {
   background: var(--panel);
   border-radius: 0;
   box-shadow: 1px 0 0 var(--panel), 0 1px 0 var(--panel);
-  padding: 0;
 }
-.tv-corner-qr {
-  width: 100%;
-  height: 100%;
+/* The scan-to-view-your-squares QR (see screen-gameday.js's
+   positionCornerQrBig). Sized and positioned in JS to exactly cover the
+   union of two always-blank rectangles — the outer team-label grid's own
+   unused top-left corner, and the table's blank corner cell directly below
+   it — so the QR gets everything the panel isn't already using for real
+   game info, in every game state, without ever covering real game info. */
+.tv-corner-qr-big {
+  position: absolute;
+  z-index: 3;
+  background: var(--panel);
+  border-radius: var(--radius) 0 0 0;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 10%;
-  box-sizing: border-box;
 }
-.tv-corner-qr svg {
+.tv-corner-qr-big svg {
   width: 100%;
   height: 100%;
   display: block;

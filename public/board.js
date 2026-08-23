@@ -195,23 +195,31 @@
     outer.appendChild(scroll);
     holder.appendChild(outer);
 
-    // Both bars span their full grid cell by default, which includes the
-    // blank corner cell's column/row. Inset them by exactly the corner
-    // cell's measured size so they start at the first number cell and end
-    // at the last, rather than at the table's outer edge.
-    const corner = table.querySelector('.cell.head.corner');
-    if (corner) {
-      const cw = corner.offsetWidth;
-      const ch = corner.offsetHeight;
-      teamBLabel.style.marginLeft = cw + 'px';
-      teamBLabel.style.width = `calc(100% - ${cw}px)`;
-      teamALabel.style.marginTop = ch + 'px';
-      teamALabel.style.height = `calc(100% - ${ch}px)`;
-    }
+    syncCornerInsets(holder);
 
     fitAxisLabel(teamALabel, teamALabel.querySelector('.teamA-label-text'), 'A', true);
     fitAxisLabel(teamBLabel, teamBLabel.querySelector('span'), 'B', false);
   }
 
-  SBS.board = { renderPickBoard, renderFullBoard, renderLiveScoreBar };
+  // Both team bars span their full grid cell by default, which includes the
+  // blank corner cell's column/row. Inset them by exactly the corner cell's
+  // measured size so they start at the first number cell and end at the
+  // last, rather than at the table's outer edge. Pixel-based (not CSS),
+  // so it's stale after anything that resizes the grid without rebuilding
+  // it — a fullscreen toggle, a window resize — until re-run; callers doing
+  // that should call this again rather than assume the initial run holds.
+  function syncCornerInsets(holder) {
+    const corner = holder.querySelector('.cell.head.corner');
+    const teamALabel = holder.querySelector('.teamA-label');
+    const teamBLabel = holder.querySelector('.teamB-label');
+    if (!corner || !teamALabel || !teamBLabel) return;
+    const cw = corner.offsetWidth;
+    const ch = corner.offsetHeight;
+    teamBLabel.style.marginLeft = cw + 'px';
+    teamBLabel.style.width = `calc(100% - ${cw}px)`;
+    teamALabel.style.marginTop = ch + 'px';
+    teamALabel.style.height = `calc(100% - ${ch}px)`;
+  }
+
+  SBS.board = { renderPickBoard, renderFullBoard, renderLiveScoreBar, syncCornerInsets };
 })();

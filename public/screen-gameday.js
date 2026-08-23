@@ -603,8 +603,16 @@
     const tvQuarters = el('div', 'tv-quarters');
     screenEl.appendChild(tvQuarters);
 
+    const boardOuter = el('div', 'tv-board-outer');
+    screenEl.appendChild(boardOuter);
     const boardWrap = el('div', 'tv-board-wrap');
-    screenEl.appendChild(boardWrap);
+    boardOuter.appendChild(boardWrap);
+    // Sits outside boardWrap (which renderFullBoard wipes and rebuilds
+    // wholesale on every board change) so it survives untouched across
+    // rebuilds — only its position/size needs recomputing, via
+    // positionCornerQrBig below, not its content.
+    const cornerQrBig = el('div', 'tv-corner-qr-big');
+    boardOuter.appendChild(cornerQrBig);
     loadCornerQr(id);
 
     // Controls fade out so the television shows nothing but the grid; any tap
@@ -619,6 +627,13 @@
       const on = SBS.ui.fullscreen.active();
       fsBtn.textContent = on ? 'Leave Fullscreen' : 'Fullscreen';
       document.body.classList.toggle('tv-fullscreen', on);
+      // Entering/leaving fullscreen resizes the grid without rebuilding it,
+      // which would otherwise leave the team-label insets and the corner QR
+      // sized for the viewport that no longer exists. Fires once now and
+      // again shortly after — some browsers settle the fullscreen layout a
+      // frame or two after the change event itself.
+      syncCornerLayout();
+      setTimeout(syncCornerLayout, 150);
     }
 
     fsBtn.addEventListener('click', async () => {
@@ -691,17 +706,44 @@
     let lastGame = null;
 
     // ---- Corner QR: scan-to-view-your-squares ----
-    // Fills the grid's otherwise-blank top-left cell with a QR straight to
-    // the read-only player companion view (see screen-player.js's own
-    // showPlayerLink, which this mirrors inline instead of behind a modal).
-    // Fetched once per TV session — the LAN address doesn't change mid-game —
-    // then reapplied after every renderFullBoard, since that call wipes and
-    // rebuilds boardWrap's whole DOM including the corner cell.
-    let cornerQrHtml = '';
-    function applyCornerQr() {
-      if (!cornerQrHtml) return;
+    // Both the true blank corner of the outer team-label grid (above/left of
+    // the table entirely) and the table's own blank corner cell (top-left of
+    // the numbers) are dead space — always, regardless of game state, since
+    // neither ever shows real game info. So instead of squeezing the QR into
+    // just the smaller of the two, cornerQrBig spans their combined
+    // rectangle: from the outer grid's actual top-left corner down to the
+    // table corner cell's bottom-right. Points at the read-only player
+    // companion view (see screen-player.js's own showPlayerLink, which this
+    // mirrors inline instead of behind a modal). Fetched once per TV session
+    // — the LAN address doesn't change mid-game — but its on-screen size and
+    // position are re-measured on every board rebuild and viewport change,
+    // since both blank rectangles are sized by layout, not fixed pixels.
+    let cornerQrReady = false;
+    function positionCornerQrBig() {
+      if (!cornerQrReady) return;
+      const outer = boardWrap.querySelector('.board-grid-outer');
       const corner = boardWrap.querySelector('.cell.head.corner');
-      if (corner) corner.innerHTML = cornerQrHtml;
+      if (!outer || !corner) return;
+      const hostRect = boardOuter.getBoundingClientRect();
+      const outerRect = outer.getBoundingClientRect();
+      const cornerRect = corner.getBoundingClientRect();
+      const w = cornerRect.right - outerRect.left;
+      const h = cornerRect.bottom - outerRect.top;
+      cornerQrBig.style.left = (outerRect.left - hostRect.left) + 'px';
+      cornerQrBig.style.top = (outerRect.top - hostRect.top) + 'px';
+      cornerQrBig.style.width = w + 'px';
+      cornerQrBig.style.height = h + 'px';
+      // Padding as a percentage of this box's own size, not CSS `%` (which
+      // resolves against the containing block — the whole board, hundreds
+      // of pixels wider — and so would demand more padding than this small
+      // box has room for, inflating it right back out to roughly that
+      // width regardless of the explicit size just set above).
+      cornerQrBig.style.padding = Math.round(Math.min(w, h) * 0.1) + 'px';
+    }
+    function syncCornerLayout() {
+      if (!boardWrap.querySelector('.board-grid-outer')) return;
+      SBS.board.syncCornerInsets(boardWrap);
+      positionCornerQrBig();
     }
     async function loadCornerQr(gameId) {
       try {
@@ -710,12 +752,26 @@
         const url = hosts.addresses.length
           ? `${hosts.httpsReady ? 'https' : 'http'}://${hosts.addresses[0]}:${hosts.port}${path}`
           : `${location.origin}${path}`;
-        const svg = window.QRCode.toSvg(url, 200);
-        cornerQrHtml = `<div class="tv-corner-qr">${svg}</div>`;
-        applyCornerQr();
+        cornerQrBig.innerHTML = window.QRCode.toSvg(url, 200);
+        cornerQrReady = true;
+        positionCornerQrBig();
       } catch (e) {
         // Best-effort — the corner just stays blank if this fails.
       }
+    }
+    window.addEventListener('resize', syncCornerLayout);
+    SBS.onLeaveScreen(() => window.removeEventListener('resize', syncCornerLayout));
+    // Belt and suspenders beyond the resize/fullscreen hooks above: boardWrap
+    // itself changes size for reasons neither of those catch — most notably
+    // a web font finishing its swap after first paint and nudging the
+    // header's height, which reflows how much room is left for the grid
+    // below it. ResizeObserver watches boardWrap's own box directly (it
+    // persists across board rebuilds — only its innerHTML gets replaced —
+    // so one observer keeps working across every renderFullBoard call).
+    if (window.ResizeObserver) {
+      const cornerLayoutObserver = new ResizeObserver(() => syncCornerLayout());
+      cornerLayoutObserver.observe(boardWrap);
+      SBS.onLeaveScreen(() => cornerLayoutObserver.disconnect());
     }
 
     // ---- Score-change axis ripple ----
@@ -1142,7 +1198,7 @@
             lastBoardSignature = boardSignature;
             SBS.board.renderFullBoard(boardWrap, game, computed, null);
             fitTeamBadges(boardWrap);
-            applyCornerQr();
+            positionCornerQrBig();
           }
           return;
         }
@@ -1217,7 +1273,7 @@
           lastBoardSignature = boardSignature;
           SBS.board.renderFullBoard(boardWrap, game, computed, liveHighlight);
           fitTeamBadges(boardWrap);
-          applyCornerQr();
+          positionCornerQrBig();
         }
         bumpAxisCells(game);
       } catch (e) {
