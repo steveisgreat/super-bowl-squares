@@ -689,6 +689,42 @@
     let finalSummarySignature = null;
     let lastGame = null;
 
+    // ---- Score-change axis ripple ----
+    // Whenever the live score changes, the axis number matching each
+    // team's new last-digit score — the actual square that would win if
+    // the game ended right now — fires five staggered rings outward, so
+    // the room's eye is drawn straight to it without the number itself
+    // moving. `null` (not yet seen a score) never triggers it, only an
+    // actual a/b change once one has been seen.
+    let lastLiveScoreKey = null;
+    function rippleAxisCell(cell) {
+      if (!cell) return;
+      cell.querySelectorAll('.score-ring').forEach(r => r.remove());
+      for (let i = 0; i < 5; i++) {
+        const ring = document.createElement('span');
+        ring.className = 'score-ring r' + (i + 1);
+        cell.appendChild(ring);
+        ring.addEventListener('animationend', () => ring.remove());
+      }
+    }
+    function bumpAxisCells(game) {
+      const live = game.liveScore;
+      if (!live || live.a === null || live.a === undefined || live.b === null || live.b === undefined) return;
+      if (!game.axisX || !game.axisY) return;
+      const key = live.a + '-' + live.b;
+      const firstSeen = lastLiveScoreKey === null;
+      if (key === lastLiveScoreKey) return;
+      lastLiveScoreKey = key;
+      if (firstSeen) return;
+
+      const colIdx = game.axisX.indexOf(live.b % 10);
+      const rowIdx = game.axisY.indexOf(live.a % 10);
+      const xCells = boardWrap.querySelectorAll('.cell.head.x');
+      const yCells = boardWrap.querySelectorAll('.cell.head.y');
+      rippleAxisCell(xCells[colIdx]);
+      rippleAxisCell(yCells[rowIdx]);
+    }
+
     // "Kickoff in 1d 03:22:07" — days only shown once there's more than a
     // day left, so the common case doesn't waste width on a leading "0d".
     function formatCountdown(ms) {
@@ -1144,6 +1180,7 @@
           SBS.board.renderFullBoard(boardWrap, game, computed, liveHighlight);
           fitTeamBadges(boardWrap);
         }
+        bumpAxisCells(game);
       } catch (e) {
         // Deleted on another device — nothing left here to show.
         if (e && e.status === 404) {

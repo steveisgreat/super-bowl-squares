@@ -1248,6 +1248,29 @@ body.tv-fullscreen .tv-quarters { margin-bottom: 6px; }
   --logo-size: clamp(24px, 3.375vw, 48px) !important;
 }
 
+/* Score-change axis ripple — five staggered rings expand outward from
+   the axis number matching each team's new last-digit score (see
+   bumpAxisCells() in screen-gameday.js), then remove themselves. The
+   number itself never moves, only the rings around it. */
+.tv-screen .cell.head { position: relative; overflow: visible; }
+.tv-screen .score-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 6px;
+  border: 2px solid #00e5ff;
+  opacity: 0;
+  pointer-events: none;
+  animation: tv-score-ripple 1.6s ease-out;
+}
+.tv-screen .score-ring.r2 { animation-delay: 0.6s; }
+.tv-screen .score-ring.r3 { animation-delay: 1.2s; }
+.tv-screen .score-ring.r4 { animation-delay: 1.8s; }
+.tv-screen .score-ring.r5 { animation-delay: 2.4s; }
+@keyframes tv-score-ripple {
+  0% { transform: scale(1); opacity: 0.9; }
+  100% { transform: scale(1.9); opacity: 0; }
+}
+
 /* Quarter-end celebration overlay — plays over the whole TV screen (board
    included) for a minute whenever a quarter resolves with a winner, however
    the score got there (live API poll, host typing, or phone entry). */
