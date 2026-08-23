@@ -105,7 +105,14 @@ function applyLive(game, live, quarterScoreAt) {
     const n = quarterPeriod[q];
     const entry = game.results[q] || {};
     if (hasScore(entry)) return;
-    const quarterOver = live.completed || (live.state === 'in' && live.period > n);
+    // ESPN reports the intermission itself (STATUS_END_PERIOD / STATUS_HALFTIME)
+    // as its own status while `period` still holds the quarter that just ended,
+    // well before `period` increments to the next quarter. Trust that signal so
+    // e.g. Q2 results land at the start of halftime instead of ~20 minutes later
+    // when the 3rd quarter kicks off.
+    const intermission = (live.statusName === 'STATUS_END_PERIOD' || live.statusName === 'STATUS_HALFTIME')
+      && live.period === n;
+    const quarterOver = live.completed || (live.state === 'in' && live.period > n) || intermission;
     if (!quarterOver) return;
     const score = quarterScoreAt(n);
     if (!score) return;
@@ -141,6 +148,7 @@ function applyLiveData(game, comp) {
     period: status.period || 0,
     clock: status.displayClock || '',
     state: type.state || 'pre',
+    statusName: type.name || '',
     completed: !!type.completed,
     updatedAt: new Date().toISOString()
   };

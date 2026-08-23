@@ -739,6 +739,14 @@
 
     function tickKickoffCountdown() {
       const game = lastGame;
+      // Same pill, repurposed: once ESPN reports halftime (see
+      // server-livescore.js's STATUS_HALFTIME handling), show that instead of
+      // a countdown — there's nothing to count down to until 2nd half kickoff.
+      if (game && game.liveScore && game.liveScore.statusName === 'STATUS_HALFTIME') {
+        kickoffCountdown.classList.remove('hidden');
+        kickoffCountdown.innerHTML = `<span class="tv-kickoff-label">Halftime</span>`;
+        return;
+      }
       const kickoffMs = game && game.kickoffTime ? Date.parse(game.kickoffTime) : NaN;
       // Deliberately not gated on game.status: the grid is routinely locked
       // (status -> 'started') well ahead of the actual kickoff once squares
