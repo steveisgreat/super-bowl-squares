@@ -1689,7 +1689,7 @@ body.tv-fullscreen .tv-meta { font-size: 1.5rem; }
   justify-content: center;
 }
 .tv-board-wrap .board-grid-outer { width: 100%; height: 100%; }
-.tv-board-wrap .board-scroll { overflow: hidden; padding-bottom: 0; }
+.tv-board-wrap .board-scroll { overflow: visible; padding-bottom: 0; }
 /* The table's own blank corner cell: match the surrounding cells' panel
    background (not the darker screen background) and paint over the 1px
    grid-gap seam on its two visible edges (right/bottom — the other two sit
