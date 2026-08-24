@@ -762,7 +762,8 @@
         const url = hosts.addresses.length
           ? `${hosts.httpsReady ? 'https' : 'http'}://${hosts.addresses[0]}:${hosts.port}${path}`
           : `${location.origin}${path}`;
-        cornerQrBig.innerHTML = window.QRCode.toSvg(url, 200);
+        cornerQrBig.innerHTML = window.QRCode.toSvg(url, 200)
+          + '<div class="tv-corner-qr-label">Scan to view your squares</div>';
         cornerQrReady = true;
         positionCornerQrBig();
       } catch (e) {
