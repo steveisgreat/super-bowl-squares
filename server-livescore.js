@@ -12,7 +12,7 @@ const SCOREBOARD_BASE = 'https://site.api.espn.com/apis/site/v2/sports';
 // however many clients are polling the board, an unofficial endpoint sees at
 // most one request per game in this window.
 const ESPN_MIN_INTERVAL_MS = 20000;
-const FETCH_TIMEOUT_MS = 8000;
+const FETCH_TIMEOUT_MS = 5000;
 
 function pad2(n) { return String(n).padStart(2, '0'); }
 function dateStr(d) { return `${d.getFullYear()}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}`; }
@@ -46,28 +46,46 @@ function abbrOf(name, league) {
   return meta ? meta.abbr : null;
 }
 
+function matchIn(data, abbrA, abbrB) {
+  if (!data || !Array.isArray(data.events)) return null;
+  for (const ev of data.events) {
+    const comp = ev.competitions && ev.competitions[0];
+    if (!comp) continue;
+    const abbrs = (comp.competitors || [])
+      .map(c => c.team && c.team.abbreviation && c.team.abbreviation.toLowerCase());
+    if (abbrs.includes(abbrA) && abbrs.includes(abbrB)) return comp;
+  }
+  return null;
+}
+
 // Finds the ESPN competition matching both team names within the given
 // league. Checks yesterday/today/tomorrow (server-local dates) so a game near
 // midnight is never missed just because the server and ESPN disagree on what
 // "today" is.
+//
+// The three dates are fetched CONCURRENTLY, not in sequence. Sequentially,
+// three misses cost 3 x FETCH_TIMEOUT_MS back to back, and this runs inside a
+// GET /api/game/:id that the TV polls every few seconds — on a serverless host
+// that blew past the function's execution budget, so the request was killed
+// and the refreshed score never got written at all. In parallel the whole
+// lookup is bounded by one timeout. Results are still scanned in
+// today/yesterday/tomorrow order, so which competition wins a tie is
+// unchanged.
 async function findEvent(teamA, teamB, league) {
   const abbrA = abbrOf(teamA, league);
   const abbrB = abbrOf(teamB, league);
   if (!abbrA || !abbrB) return null;
 
   const now = new Date();
-  for (const offset of [0, -1, 1]) {
+  const results = await Promise.all([0, -1, 1].map(offset => {
     const d = new Date(now);
     d.setDate(d.getDate() + offset);
-    const data = await fetchScoreboard(dateStr(d), league);
-    if (!data || !Array.isArray(data.events)) continue;
-    for (const ev of data.events) {
-      const comp = ev.competitions && ev.competitions[0];
-      if (!comp) continue;
-      const abbrs = (comp.competitors || [])
-        .map(c => c.team && c.team.abbreviation && c.team.abbreviation.toLowerCase());
-      if (abbrs.includes(abbrA) && abbrs.includes(abbrB)) return comp;
-    }
+    return fetchScoreboard(dateStr(d), league);
+  }));
+
+  for (const data of results) {
+    const comp = matchIn(data, abbrA, abbrB);
+    if (comp) return comp;
   }
   return null;
 }
@@ -210,20 +228,38 @@ async function getTodaysGames(ymd, league) {
   }).filter(Boolean);
 }
 
-// Last completed ESPN check per game, for this process only. The persisted
-// `liveScore.updatedAt` above is the real cross-process throttle, but it only
-// advances when the score actually changed — so during a genuinely static
-// stretch (pre-game, halftime, or an ESPN outage returning nothing) it would
-// never move and every read would re-fetch. This backstop closes that gap.
+// Last completed ESPN check per game, for this process only — a fast path that
+// saves a field lookup on the LAN server, where one process serves every
+// request. It is NOT the throttle: see `liveCheckedAt` below for why a
+// process-local map cannot be one.
 const lastChecked = new Map();
 
 // One in-flight ESPN lookup per game at a time. When a burst of clients polls
 // the same game together, the first opens the request and the rest return the
-// data they already have rather than queueing behind an 8s network timeout.
+// data they already have rather than queueing behind a network timeout.
 const inFlight = new Map();
 
+// `game.liveCheckedAt` is the real throttle, and it is deliberately PERSISTED
+// on the game document rather than held in module state.
+//
+// Two earlier attempts at this both leaked on a serverless host:
+//
+//   * `lastChecked` (above) lives in one process's memory. Every serverless
+//     invocation is a separate instance, so that map is empty on essentially
+//     every request and throttles nothing.
+//   * `liveScore.updatedAt` is persisted, but it only advances when the score
+//     actually CHANGED. During any static stretch — halftime, pre-kickoff, an
+//     ESPN outage returning nothing — it never moves, so every poll from every
+//     phone in the room fired a fresh lookup. A dozen guests on the player
+//     view at 6s each meant hundreds of requests a minute to an unofficial
+//     endpoint that nobody is entitled to hammer.
+//
+// `liveCheckedAt` advances on every completed attempt, including one that
+// found nothing, which is exactly the case the other two miss. The cost is one
+// small write per game per ESPN_MIN_INTERVAL_MS while somebody is watching.
 function checkedRecently(game, now) {
   const stamps = [
+    game.liveCheckedAt ? Date.parse(game.liveCheckedAt) : null,
     game.liveScore && game.liveScore.updatedAt ? Date.parse(game.liveScore.updatedAt) : null,
     lastChecked.get(game.id)
   ];
@@ -264,16 +300,24 @@ async function refreshLiveScore(game) {
   inFlight.set(game.id, work);
 
   try {
-    return await work;
+    await work;
   } catch (e) {
-    // Best-effort by design: a failed lookup leaves the game untouched and
-    // manual score entry keeps working exactly as before.
+    // Best-effort by design: a failed lookup leaves the score untouched and
+    // manual score entry keeps working exactly as before. The stamp below
+    // still lands, so an ESPN outage is throttled like any other attempt
+    // rather than retried on every single poll.
     console.error(`Live score refresh failed for ${game.id}: ${e.message}`);
-    return false;
   } finally {
     lastChecked.set(game.id, Date.now());
     inFlight.delete(game.id);
   }
+
+  // Always true, and always stamped: the caller persists on `true`, and
+  // persisting the stamp is the whole point even when the score itself did
+  // not move. Returning `changed` here would throw away the throttle in
+  // precisely the static case that needs it most.
+  game.liveCheckedAt = new Date().toISOString();
+  return true;
 }
 
 module.exports = { refreshLiveScore, getTodaysGames };

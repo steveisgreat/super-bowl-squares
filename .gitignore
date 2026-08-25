@@ -3,8 +3,12 @@ data/*.json
 
 # Secrets. .env.local holds the real Neon connection string; only the
 # placeholder template is ever committed.
-.env
-.env.*
-!.env.example
-.vercel
+#
+# Order matters: git takes the LAST matching pattern, so the negation has to
+# come after the rule it is carving out of. An earlier version repeated .env*
+# below the negation, which silently put .env.example back on the ignore list
+# (it survived only because it had already been committed).
 .env*
+!.env.example
+
+.vercel

@@ -182,7 +182,7 @@
     });
     c.querySelector('.game-card-delete').addEventListener('click', async (e) => {
       e.stopPropagation();
-      const ok = await showConfirm(`Delete this game (${g.teamA || '?'} vs ${g.teamB || '?'})? This cannot be undone.`);
+      const ok = await showConfirm(`Delete this game (${escapeHtml(g.teamA || '?')} vs ${escapeHtml(g.teamB || '?')})? This cannot be undone.`);
       if (!ok) return;
       try {
         await SBS.api.deleteGame(g.id);

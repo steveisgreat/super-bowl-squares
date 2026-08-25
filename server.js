@@ -69,7 +69,10 @@ function requestListener(req, res) {
 
   if (pathname.startsWith('/api/')) {
     handleApi(req, res, pathname, url.searchParams, getHostInfo).catch(e => {
-      sendJSON(res, 500, { error: e.message });
+      // Detail to the console, generic text to the client — same reasoning as
+      // the serverless entry point in api/[...path].js.
+      console.error(`Unhandled API error on ${pathname}: ${e.stack || e.message}`);
+      sendJSON(res, 500, { error: 'Something went wrong on the server.' });
     });
   } else {
     serveStatic(req, res, pathname);

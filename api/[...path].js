@@ -13,6 +13,11 @@ module.exports = async function handler(req, res) {
   try {
     await handleApi(req, res, url.pathname, url.searchParams);
   } catch (e) {
-    sendJSON(res, 500, { error: e.message });
+    // The detail goes to the server log, never to the client: a failure down
+    // in the Postgres driver puts host names and connection-string fragments
+    // in e.message, and this endpoint is reachable by anyone holding a game
+    // link.
+    console.error(`Unhandled API error on ${url.pathname}: ${e.stack || e.message}`);
+    sendJSON(res, 500, { error: 'Something went wrong on the server.' });
   }
 };

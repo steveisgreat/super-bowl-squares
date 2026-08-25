@@ -31,6 +31,11 @@
 
   // Native confirm()/alert() are unreliable on iPad and invisible on an
   // AirPlayed TV, so every prompt goes through these.
+  //
+  // `message` is rendered as HTML, not text — callers rely on that to drop in
+  // <br> and inline markup. Anything interpolated into it that came from a
+  // person (team names, player names) MUST be run through escapeHtml at the
+  // call site.
   function showModal({ message, okText, cancelText }) {
     return new Promise(resolve => {
       const overlay = overlayEl();
