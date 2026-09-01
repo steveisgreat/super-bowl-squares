@@ -272,19 +272,38 @@ function checkedRecently(game, now) {
   });
 }
 
-// Mutates `game` in place and returns true if anything changed, so the caller
+// Mutates `game` in place and returns true if the SCORE changed, so the caller
 // knows to persist it. This replaces the old background poller: a game is now
 // only ever looked up because somebody is actually looking at it, which is
 // what makes the app work on a host with no long-lived process — and means no
 // ESPN traffic at all when nobody has the board open.
-async function refreshLiveScore(game) {
+//
+// `claimSlot` is how the throttle survives more than one process. It is an
+// async function, supplied by the caller, that durably persists the freshly
+// stamped `game.liveCheckedAt` and resolves true ONLY IF this process won that
+// write. lib/api.js implements it with the store's ordinary conditional
+// update, which means the optimistic-concurrency check the store already
+// performs doubles as a cross-instance mutex — no lock table, no new schema.
+//
+// It has to be awaited BEFORE the network call, not after. Stamping afterwards
+// leaves a window as wide as the ESPN round trip (up to FETCH_TIMEOUT_MS) in
+// which every arriving request still sees a stale stamp and starts its own
+// lookup. That window is harmless at three viewers and severe at fifty: at
+// ~9 requests/second a 5s ESPN timeout let roughly forty-odd requests through
+// the gate at once, each fanning out to three scoreboard fetches. Claiming
+// first means exactly one of them proceeds and the rest return immediately.
+//
+// Omitting `claimSlot` is only safe on a host that runs a single process (the
+// LAN server), where `inFlight` and `lastChecked` below already dedupe
+// everything. Serverless callers must pass one.
+async function refreshLiveScore(game, claimSlot) {
   // Only games that are locked and not yet finished are worth tracking;
   // setup/picking games have no score yet and a finished game already has its
   // final score.
   if (!game || game.status !== 'started') return false;
 
   // A simulated game is a pure function of wall clock against the plan drawn
-  // at lock time — no network call, so there is nothing to throttle.
+  // at lock time — no network call, so there is nothing to throttle or claim.
   if (game.simulation) return applySimulatedData(game);
 
   const now = Date.now();
@@ -293,31 +312,31 @@ async function refreshLiveScore(game) {
   // interleave another request between these two lines.
   if (inFlight.has(game.id)) return false;
 
+  // Stamp, then claim. Losing the claim means another instance is already
+  // looking this game up, so there is nothing to do but let it.
+  game.liveCheckedAt = new Date().toISOString();
+  if (claimSlot && !(await claimSlot())) return false;
+
   const work = (async () => {
     const comp = await findEvent(game.teamA, game.teamB, game.league);
     return applyLiveData(game, comp || {});
   })();
   inFlight.set(game.id, work);
 
+  let changed = false;
   try {
-    await work;
+    changed = await work;
   } catch (e) {
     // Best-effort by design: a failed lookup leaves the score untouched and
-    // manual score entry keeps working exactly as before. The stamp below
-    // still lands, so an ESPN outage is throttled like any other attempt
+    // manual score entry keeps working exactly as before. The claim above has
+    // already landed, so an ESPN outage is throttled like any other attempt
     // rather than retried on every single poll.
     console.error(`Live score refresh failed for ${game.id}: ${e.message}`);
   } finally {
     lastChecked.set(game.id, Date.now());
     inFlight.delete(game.id);
   }
-
-  // Always true, and always stamped: the caller persists on `true`, and
-  // persisting the stamp is the whole point even when the score itself did
-  // not move. Returning `changed` here would throw away the throttle in
-  // precisely the static case that needs it most.
-  game.liveCheckedAt = new Date().toISOString();
-  return true;
+  return changed;
 }
 
 module.exports = { refreshLiveScore, getTodaysGames };

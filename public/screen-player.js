@@ -372,7 +372,14 @@
     }
 
     load(true);
-    SBS.setManagedInterval(() => load(false), 6000);
+    // 15s, not the 6s the host-facing screens use. This view is the one that
+    // scales with the size of the party: every guest who scans the QR code
+    // holds one open, so its interval — multiplied by 20, 50, however many
+    // people are in the room — sets the floor for load on every tier behind
+    // it. At 50 viewers, 6s is 500 requests a minute and 15s is 200, and on a
+    // read-only "how am I doing" panel nobody can tell the difference.
+    // The host's own board and the TV stay fast; there is exactly one of each.
+    SBS.setManagedInterval(() => load(false), 15000);
   }
 
   // Shows a QR code (and the raw address) linking straight back to this same

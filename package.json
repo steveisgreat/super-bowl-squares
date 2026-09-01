@@ -5,9 +5,10 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node test.js && node test-store.js && node test-auth.js",
+    "test": "node test.js && node test-store.js && node test-auth.js && node test-livescore.js",
     "test:store": "node test-store.js",
-    "test:auth": "node test-auth.js"
+    "test:auth": "node test-auth.js",
+    "test:livescore": "node test-livescore.js"
   },
   "license": "MIT",
   "engines": {
