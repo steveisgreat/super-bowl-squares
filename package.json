@@ -5,11 +5,12 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node test.js && node test-store.js && node test-auth.js && node test-livescore.js && node test-store-fs.js",
+    "test": "node test.js && node test-store.js && node test-auth.js && node test-livescore.js && node test-store-fs.js && node test-store-pg.js",
     "test:store": "node test-store.js",
     "test:auth": "node test-auth.js",
     "test:livescore": "node test-livescore.js",
-    "test:store-fs": "node test-store-fs.js"
+    "test:store-fs": "node test-store-fs.js",
+    "test:store-pg": "node test-store-pg.js"
   },
   "license": "MIT",
   "engines": {
